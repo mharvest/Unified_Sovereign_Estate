@@ -6,7 +6,7 @@ export PYTHONPATH := $(CURDIR)/src
 FOUNDRY ?= forge
 NPM ?= npm
 
-.PHONY: bootstrap dev lint lint-check test ensure-venv sol-build sol-test oracle oracle-dev frontend frontend-dev devnet-demo
+.PHONY: bootstrap dev lint lint-check test ensure-venv sol-build sol-test oracle oracle-dev frontend frontend-dev devnet-demo docker-up docker-down docker-smoke
 
 bootstrap: $(VENV)/bin/activate
 	@echo "Virtual environment ready. Run 'source $(VENV)/bin/activate' before developing."
@@ -59,3 +59,16 @@ frontend-dev:
 
 devnet-demo:
 	./scripts/devnet/full-demo.sh
+
+docker-up:
+	cd infra && docker compose up --build
+
+docker-down:
+	cd infra && docker compose down -v
+
+docker-smoke:
+	cd infra && \
+	  trap 'docker compose down -v' EXIT && \
+	  docker compose up --build -d && \
+	  sleep 20 && \
+	  docker compose ps

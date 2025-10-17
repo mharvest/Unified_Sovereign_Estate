@@ -1,0 +1,10 @@
+resources:
+  - db-deployment.yaml
+  - api-deployment.yaml
+  - auth-deployment.yaml
+  - vaultquant-deployment.yaml
+  - safevault-deployment.yaml
+  - se7en-deployment.yaml
+  - data-deployment.yaml
+  - oracle-deployment.yaml
+  - ui-deployment.yaml

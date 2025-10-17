@@ -6,7 +6,7 @@ Unified Sovereign Estate is the sovereign Codex stack. Keep this guide current f
 - `contracts/` holds Solidity sources (HRVST token, CSDN lifecycle, governance) with utilities in `utils/` and shared interfaces in `interfaces/`.
 - `script/` contains Foundry execution scripts plus the `KycRootGenerator.js` Merkle utility.
 - `test/` hosts Foundry tests; `tests/` keeps Python smoke/automation coverage.
-- `services/eyeion-oracle/` is the Node/viem watcher pushing payloads to Eyeion and the SafeVault cache.
+- `services/` collects Node microservices (`auth`, `vaultquant`, `safevault`, `se7en`, `data`, `eyeion-oracle`).
 - `frontend/` is the Next.js + Tailwind fiduciary console with hooks in `lib/` and UI atoms in `components/`.
 - `src/`, `infra/`, `docs/`, and `assets/` retain application runtime, infrastructure, long-form notes, and seeded artifacts respectively.
 
@@ -19,6 +19,11 @@ All entry points are wired through `Makefile`:
 - `scripts/devnet/full-demo.sh` — spins up an Anvil chain, deploys the stack, runs the lifecycle demo, and tails the Eyeion oracle in live mode (see `docs/runbooks/devnet.md`).
 - `docs/runbooks/oracle-live.md` documents connecting the Eyeion oracle to a production Eklesia RPC.
 - Deploy scripts (`script/*.s.sol`) expect role keys in env vars (see comments inline) and Foundry `--broadcast` usage.
+- Docker workflows:
+  - `docker compose up --build` from `infra/` runs the entire sovereign stack (contracts, API, services, oracle, UI) locally.
+  - `docker compose down -v` tears everything down.
+- Runbook: `docs/runbooks/docker.md` documents Make targets, service ports, and troubleshooting tips for the container stack.
+- Kubernetes manifests live under `infra/k8s`; use `kustomize build infra/k8s` for a base overlay.
 
 ## Coding Style & Naming Conventions
 - Solidity follows OZ style: 4-space indentation, explicit errors, and role constants sourced from `utils/Roles.sol`.

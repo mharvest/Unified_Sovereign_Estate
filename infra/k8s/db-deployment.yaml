@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: estate-db
+spec:
+  serviceName: estate-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: estate-db
+  template:
+    metadata:
+      labels:
+        app: estate-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: estate
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: estate-secrets
+                  key: postgres-password
+            - name: POSTGRES_DB
+              value: harvest_estate
+          volumeMounts:
+            - name: db-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: db-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: estate-db
+spec:
+  type: ClusterIP
+  selector:
+    app: estate-db
+  ports:
+    - port: 5432
+      targetPort: 5432

@@ -1,0 +1,129 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    container_name: hrvst-db
+    environment:
+      POSTGRES_USER: estate
+      POSTGRES_PASSWORD: estate
+      POSTGRES_DB: harvest_estate
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U estate -d harvest_estate"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - estate
+
+  contracts:
+    build: ../contracts
+    container_name: hrvst-contracts
+    ports:
+      - "8545:8545"
+    healthcheck:
+      test: ["CMD-SHELL", "cast block-number --rpc-url http://127.0.0.1:8545 >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+    volumes:
+      - ../contracts:/contracts
+    networks:
+      - estate
+
+  api:
+    build: ../api
+    container_name: hrvst-api
+    ports:
+      - "4000:4000"
+      - "4005:4005"
+    depends_on:
+      db:
+        condition: service_healthy
+      auth:
+        condition: service_started
+      vaultquant:
+        condition: service_started
+      safevault:
+        condition: service_started
+      se7en:
+        condition: service_started
+    networks:
+      - estate
+
+  auth:
+    build: ../services/auth
+    container_name: hrvst-auth
+    ports:
+      - "4011:4011"
+    networks:
+      - estate
+
+  vaultquant:
+    build: ../services/vaultquant
+    container_name: hrvst-vaultquant
+    ports:
+      - "4012:4012"
+    networks:
+      - estate
+
+  safevault:
+    build: ../services/safevault
+    container_name: hrvst-safevault
+    ports:
+      - "4013:4013"
+    networks:
+      - estate
+
+  se7en:
+    build: ../services/se7en
+    container_name: hrvst-se7en
+    ports:
+      - "4014:4014"
+    networks:
+      - estate
+
+  data:
+    build: ../services/data
+    container_name: hrvst-data
+    ports:
+      - "4020:4020"
+    networks:
+      - estate
+
+  oracle:
+    build: ../services/eyeion-oracle
+    container_name: hrvst-oracle
+    depends_on:
+      api:
+        condition: service_started
+      contracts:
+        condition: service_healthy
+    environment:
+      RPC_URL: http://contracts:8545
+      ORACLE_OFFLINE: "false"
+      EYEION_API_BASE: mock
+    networks:
+      - estate
+
+  ui:
+    build: ../frontend
+    container_name: hrvst-ui
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    networks:
+      - estate
+
+volumes:
+  db_data:
+
+networks:
+  estate:
+    driver: bridge
