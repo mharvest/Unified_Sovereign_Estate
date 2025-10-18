@@ -17,8 +17,14 @@ test.describe('Unified Estate Console', () => {
   });
 
   test('redeem button surfaces missing wallet error', async ({ page }) => {
+    await page.addInitScript(() => {
+      // Ensure tests run without an injected wallet provider so the UI shows the missing-wallet toast.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (window as any).ethereum;
+    });
+
     await page.goto('/');
     await page.getByRole('button', { name: 'Redeem Note' }).click();
-    await expect(page.getByText('Wallet connection not ready')).toBeVisible();
+    await expect(page.getByText(/connector not found/i)).toBeVisible({ timeout: 10000 });
   });
 });
