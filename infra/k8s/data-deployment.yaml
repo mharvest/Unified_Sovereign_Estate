@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: estate-data
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: estate-data
+  template:
+    metadata:
+      labels:
+        app: estate-data
+    spec:
+      containers:
+        - name: data
+          image: ghcr.io/harvest/estate-data:latest
+          ports:
+            - containerPort: 4020
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: estate-data
+spec:
+  selector:
+    app: estate-data
+  ports:
+    - port: 4020
+      targetPort: 4020

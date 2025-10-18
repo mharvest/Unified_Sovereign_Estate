@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: estate-se7en
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: estate-se7en
+  template:
+    metadata:
+      labels:
+        app: estate-se7en
+    spec:
+      containers:
+        - name: se7en
+          image: ghcr.io/harvest/estate-se7en:latest
+          ports:
+            - containerPort: 4014
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: estate-se7en
+spec:
+  selector:
+    app: estate-se7en
+  ports:
+    - port: 4014
+      targetPort: 4014

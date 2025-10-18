@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: estate-auth
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: estate-auth
+  template:
+    metadata:
+      labels:
+        app: estate-auth
+    spec:
+      containers:
+        - name: auth
+          image: ghcr.io/harvest/estate-auth:latest
+          ports:
+            - containerPort: 4011
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: estate-auth
+spec:
+  selector:
+    app: estate-auth
+  ports:
+    - port: 4011
+      targetPort: 4011

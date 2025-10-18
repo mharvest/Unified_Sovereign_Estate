@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.py[co]
+
+# Virtual environments
+.venv/
+.env
+.env.*
+
+# Tooling artifacts
+.lint-ran
+.lint-checked
+.coverage
+htmlcov/
+pytest.cache/
+cache/
+out/
+broadcast/
+foundry.lock
+.anvil.log
+.anvil.pid
+.oracle.log
+.oracle.pid
+scripts/devnet/generated.env
+
+# Frontend tooling
+frontend/playwright-report/
+frontend/test-results/
+frontend/.next/
+frontend/node_modules/
+services/eyeion-oracle/node_modules/
+
+# Editors
+.vscode/
+.idea/

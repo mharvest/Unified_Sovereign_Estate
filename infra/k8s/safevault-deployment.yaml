@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: estate-safevault
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: estate-safevault
+  template:
+    metadata:
+      labels:
+        app: estate-safevault
+    spec:
+      containers:
+        - name: safevault
+          image: ghcr.io/harvest/estate-safevault:latest
+          ports:
+            - containerPort: 4013
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: estate-safevault
+spec:
+  selector:
+    app: estate-safevault
+  ports:
+    - port: 4013
+      targetPort: 4013

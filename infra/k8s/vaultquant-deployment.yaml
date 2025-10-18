@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: estate-vaultquant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: estate-vaultquant
+  template:
+    metadata:
+      labels:
+        app: estate-vaultquant
+    spec:
+      containers:
+        - name: vaultquant
+          image: ghcr.io/harvest/estate-vaultquant:latest
+          ports:
+            - containerPort: 4012
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: estate-vaultquant
+spec:
+  selector:
+    app: estate-vaultquant
+  ports:
+    - port: 4012
+      targetPort: 4012

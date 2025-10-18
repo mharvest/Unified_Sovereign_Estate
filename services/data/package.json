@@ -1,0 +1,14 @@
+{
+  "name": "harvest-data-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "generate": "echo 'TODO: prisma generate'",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "fastify": "^4.26.2"
+  }
+}

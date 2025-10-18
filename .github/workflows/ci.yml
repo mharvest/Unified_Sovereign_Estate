@@ -1,0 +1,124 @@
+name: Sovereign Stack CI
+
+on:
+  pull_request:
+  push:
+    branches: [master, main]
+
+jobs:
+  python:
+    name: Python Lint & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('requirements*.txt') }}
+      - name: Install dependencies
+        run: |
+          make bootstrap
+      - name: Lint & unit tests
+        run: |
+          make lint-check
+          make test
+
+  contracts:
+    name: Foundry Build & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Install dependencies
+        run: |
+          forge install
+      - name: Build & test
+        env:
+          FOUNDRY_PROFILE: ci
+        run: |
+          forge build
+          forge test -vvvv
+
+  oracle:
+    name: Eyeion Oracle Smoke
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/eyeion-oracle
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-oracle-${{ runner.os }}-${{ hashFiles('services/eyeion-oracle/package-lock.json') }}
+      - name: Install dependencies
+        run: npm ci
+      - name: Offline startup check
+        env:
+          ORACLE_OFFLINE: 'true'
+          RPC_URL: http://127.0.0.1:8545
+          CSDN_ADDRESS: 0x0000000000000000000000000000000000000000
+          EYEION_API_BASE: https://example.invalid
+        run: npm run start
+
+  frontend:
+    name: Frontend Lint, Build & E2E
+    runs-on: ubuntu-latest
+    needs: oracle
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-frontend-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Playwright smoke tests
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3100
+        run: npm run test:e2e -- --project=chromium --reporter=list --timeout=60000
+
+  docker:
+    name: Docker Compose Smoke
+    runs-on: ubuntu-latest
+    needs:
+      - python
+      - contracts
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docker smoke test
+        run: make docker-smoke
+
+  summary:
+    name: CI Summary
+    needs:
+      - python
+      - contracts
+      - frontend
+      - docker
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "All checks completed"

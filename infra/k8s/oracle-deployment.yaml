@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: estate-oracle
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: estate-oracle
+  template:
+    metadata:
+      labels:
+        app: estate-oracle
+    spec:
+      containers:
+        - name: oracle
+          image: ghcr.io/harvest/estate-oracle:latest
+          env:
+            - name: RPC_URL
+              value: https://eklesia-rpc.example
+            - name: ORACLE_OFFLINE
+              value: "false"
+            - name: EYEION_API_BASE
+              value: https://eyeion.harvest/api
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: estate-oracle
+spec:
+  selector:
+    app: estate-oracle
+  ports:
+    - port: 8085
+      targetPort: 8085
