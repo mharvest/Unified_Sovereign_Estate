@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useContractWrite } from 'wagmi';
+import { useAccount, useContractWrite } from 'wagmi';
 import { csdnAbi, getCsdnAddress } from '../../lib/csdn';
+import { resolveWalletError } from '../../lib/walletErrors';
 
 interface RedeemButtonProps {
   noteId: bigint;
@@ -15,6 +16,7 @@ export function RedeemButton({ noteId, amount, label = 'Redeem Note' }: RedeemBu
     functionName: 'redeem',
     mode: 'recklesslyUnprepared'
   });
+  const { isConnected } = useAccount();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -32,8 +34,13 @@ export function RedeemButton({ noteId, amount, label = 'Redeem Note' }: RedeemBu
 
   const handleClick = async () => {
     try {
-      setPending(true);
       setError(null);
+      setTxHash(null);
+      if (!isConnected) {
+        setError('Connect a wallet to continue.');
+        return;
+      }
+      setPending(true);
       if (!redeem.writeAsync) {
         throw new Error('Wallet connection not ready');
       }
@@ -46,7 +53,7 @@ export function RedeemButton({ noteId, amount, label = 'Redeem Note' }: RedeemBu
         setTxHash(hash);
       }
     } catch (err: any) {
-      setError(err.message ?? 'Redeem failed');
+      setError(resolveWalletError(err, 'Redeem failed'));
     } finally {
       setPending(false);
     }

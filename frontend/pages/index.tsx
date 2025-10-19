@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react';
 import { keccak256, parseUnits, stringToHex } from 'viem';
-import { useContractWrite } from 'wagmi';
+import { useAccount, useContractWrite } from 'wagmi';
 import { FiduciaryConsole } from '../components/layout/FiduciaryConsole';
+import FiduciaryConsoleApprovalPanel from '../components/panels/FiduciaryConsoleApprovalPanel';
 import { CPAIssueButton } from '../components/buttons/CPAIssueButton';
 import { UnderwriterInsureButton } from '../components/buttons/UnderwriterInsureButton';
 import { TreasurySubscribeKYCButton } from '../components/buttons/TreasurySubscribeKYCButton';
 import { TreasuryDistributeButton } from '../components/buttons/TreasuryDistributeButton';
 import { RedeemButton } from '../components/buttons/RedeemButton';
 import { csdnAbi, getCsdnAddress } from '../lib/csdn';
+import { resolveWalletError } from '../lib/walletErrors';
 
 export default function HomePage() {
   const [noteId, setNoteId] = useState('1');
@@ -29,6 +31,7 @@ export default function HomePage() {
     abi: csdnAbi,
     functionName: 'unpause'
   });
+  const { isConnected } = useAccount();
 
   const noteIdBig = useMemo(() => {
     try {
@@ -69,24 +72,30 @@ export default function HomePage() {
   const pause = async () => {
     try {
       setFormError(null);
+      if (!isConnected) {
+        throw new Error('Connect a wallet to continue.');
+      }
       if (!pauseWrite.writeAsync) {
         throw new Error('Wallet connection not ready');
       }
       await pauseWrite.writeAsync();
     } catch (err: any) {
-      setFormError(err.message ?? 'Pause failed');
+      setFormError(resolveWalletError(err, 'Pause failed'));
     }
   };
 
   const unpause = async () => {
     try {
       setFormError(null);
+      if (!isConnected) {
+        throw new Error('Connect a wallet to continue.');
+      }
       if (!unpauseWrite.writeAsync) {
         throw new Error('Wallet connection not ready');
       }
       await unpauseWrite.writeAsync();
     } catch (err: any) {
-      setFormError(err.message ?? 'Resume failed');
+      setFormError(resolveWalletError(err, 'Resume failed'));
     }
   };
 
@@ -173,6 +182,8 @@ export default function HomePage() {
             {formError && <p className="text-[11px] text-rose-300">{formError}</p>}
           </div>
         </div>
+
+        <FiduciaryConsoleApprovalPanel className="md:col-span-2" />
       </FiduciaryConsole>
     </main>
   );

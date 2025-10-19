@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { useContractWrite } from 'wagmi';
+import { useAccount, useContractWrite } from 'wagmi';
 import { isAddress, isHex } from 'viem';
 import { Hex } from 'viem';
 import { routerAbi, getRouterAddress } from '../../lib/router';
+import { resolveWalletError } from '../../lib/walletErrors';
 
 interface TreasurySubscribeKYCButtonProps {
   noteId: bigint;
@@ -20,6 +21,7 @@ export function TreasurySubscribeKYCButton({ noteId, lp, amount, leaf, proof, la
     functionName: 'subscribeWithKyc',
     mode: 'recklesslyUnprepared'
   });
+  const { isConnected } = useAccount();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -35,34 +37,42 @@ export function TreasurySubscribeKYCButton({ noteId, lp, amount, leaf, proof, la
     return null;
   };
 
+  const validateForm = () => {
+    if (!isAddress(lp)) {
+      throw new Error('Invalid subscriber address');
+    }
+    if (amount <= 0n) {
+      throw new Error('Amount must be positive');
+    }
+    if (!isHex(leaf)) {
+      throw new Error('Leaf must be a valid hex value');
+    }
+    proof.forEach((entry) => {
+      if (!isHex(entry)) {
+        throw new Error('All proof entries must be hex strings');
+      }
+    });
+  };
+
   const handleClick = async () => {
+    setError(null);
+    setTxHash(null);
     try {
-      setPending(true);
-      setError(null);
+      validateForm();
+      if (!isConnected) {
+        throw new Error('Connect a wallet to continue.');
+      }
       if (!subscribe.writeAsync) {
         throw new Error('Wallet connection not ready');
       }
-      if (!isAddress(lp)) {
-        throw new Error('Invalid subscriber address');
-      }
-      if (amount <= 0n) {
-        throw new Error('Amount must be positive');
-      }
-      if (!isHex(leaf)) {
-        throw new Error('Leaf must be a valid hex value');
-      }
-      proof.forEach((entry) => {
-        if (!isHex(entry)) {
-          throw new Error('All proof entries must be hex strings');
-        }
-      });
+      setPending(true);
       const result = await subscribe.writeAsync({ args: [noteId, lp, amount, leaf, proof] });
       const hash = extractHash(result);
       if (hash) {
         setTxHash(hash);
       }
     } catch (err: any) {
-      setError(err.message ?? 'Subscription failed');
+      setError(resolveWalletError(err, 'Subscription failed'));
     } finally {
       setPending(false);
     }
