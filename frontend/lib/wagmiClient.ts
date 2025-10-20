@@ -30,7 +30,7 @@ const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID?
 const placeholderProjectIds = new Set(['demo-project', 'your-walletconnect-project-id']);
 const shouldEnableWalletConnect = Boolean(walletConnectProjectId && !placeholderProjectIds.has(walletConnectProjectId));
 
-const connectors = [new InjectedConnector({ chains })];
+const connectors: (InjectedConnector | WalletConnectConnector)[] = [new InjectedConnector({ chains })];
 
 if (shouldEnableWalletConnect && walletConnectProjectId) {
   connectors.push(
