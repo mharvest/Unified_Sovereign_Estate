@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "linux-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model TreasuryState {
+  id                 Int      @id @default(autoincrement())
+  stableUsd          Decimal  @default(0)
+  insuredReservesUsd Decimal  @default(0)
+  realizedYieldUsd   Decimal  @default(0)
+  liabilitiesUsd     Decimal  @default(0)
+  createdAt          DateTime @default(now())
+}
+
+model TokenSupply {
+  symbol      String  @id
+  circulating Decimal
+  createdAt   DateTime @default(now())
+}
+
+model RedemptionTicket {
+  id            Int      @id @default(autoincrement())
+  holderId      String
+  tokens        Decimal
+  usdPaid       Decimal
+  pricePerToken Decimal
+  createdAt     DateTime @default(now())
+}
