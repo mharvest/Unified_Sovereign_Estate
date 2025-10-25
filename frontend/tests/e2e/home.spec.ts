@@ -16,6 +16,12 @@ test.describe('Unified Estate Console', () => {
     await expect(page.getByText('Invalid subscriber address')).toBeVisible();
   });
 
+  test('approval panel completes multi-signature flow', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: /fiduciary console — multi-signature validation/i })).toBeVisible();
+    await expect(page.getByText(/all signatories approved/i)).toBeVisible({ timeout: 16000 });
+  });
+
   test('redeem button surfaces missing wallet error', async ({ page }) => {
     await page.addInitScript(() => {
       // Ensure tests run without an injected wallet provider so the UI shows the missing-wallet toast.
@@ -25,6 +31,6 @@ test.describe('Unified Estate Console', () => {
 
     await page.goto('/');
     await page.getByRole('button', { name: 'Redeem Note' }).click();
-    await expect(page.getByText(/connector not found/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/connect a wallet to continue/i)).toBeVisible({ timeout: 10000 });
   });
 });

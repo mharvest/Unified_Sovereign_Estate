@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useContractWrite } from 'wagmi';
+import { useAccount, useContractWrite } from 'wagmi';
 import { Hex } from 'viem';
 import { csdnAbi, getCsdnAddress } from '../../lib/csdn';
+import { resolveWalletError } from '../../lib/walletErrors';
 
 interface CPAIssueButtonProps {
   noteId: bigint;
@@ -23,6 +24,7 @@ export function CPAIssueButton({ noteId, docHash, principal, label = 'Originate 
     functionName: 'issue',
     mode: 'recklesslyUnprepared'
   });
+  const { isConnected } = useAccount();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -40,8 +42,13 @@ export function CPAIssueButton({ noteId, docHash, principal, label = 'Originate 
 
   const handleClick = async () => {
     try {
-      setPending(true);
       setError(null);
+      setTxHash(null);
+      if (!isConnected) {
+        setError('Connect a wallet to continue.');
+        return;
+      }
+      setPending(true);
       if (!originate.writeAsync || !issue.writeAsync) {
         throw new Error('Wallet connection not ready');
       }
@@ -59,7 +66,7 @@ export function CPAIssueButton({ noteId, docHash, principal, label = 'Originate 
         setTxHash(issueHash);
       }
     } catch (err: any) {
-      setError(err.message ?? 'Failed to originate note');
+      setError(resolveWalletError(err, 'Failed to originate note'));
     } finally {
       setPending(false);
     }

@@ -1,0 +1,37 @@
+{
+  "name": "se7en-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "test": "vitest run",
+    "demo-seed": "tsx scripts/demo_flow.ts",
+    "demo:alpha": "tsx scripts/demo_flow.ts",
+    "deploy-demo-contracts": "tsx scripts/deploy_demo_contracts.ts",
+    "verify:env": "node scripts/verify_env.mjs",
+    "hash:docs": "node scripts/hash_documents.mjs",
+    "migration:verify": "prisma migrate deploy --schema prisma/schema.prisma && prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script",
+    "attest:json": "node src/cli/attestationReportJson.js",
+    "jwt:create": "tsx scripts/create_jwt.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^9.0.1",
+    "@prisma/client": "^5.14.0",
+    "dotenv": "^16.4.5",
+    "fastify": "^4.28.1",
+    "fastify-plugin": "^4.5.1",
+    "pino": "^9.0.0",
+    "viem": "^2.9.16",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "prisma": "^5.14.0",
+    "solc": "^0.8.30",
+    "tsx": "^4.7.1",
+    "typescript": "^5.4.5",
+    "vitest": "^1.4.0"
+  }
+}

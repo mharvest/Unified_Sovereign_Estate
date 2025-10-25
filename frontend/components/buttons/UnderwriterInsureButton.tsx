@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useContractWrite } from 'wagmi';
+import { useAccount, useContractWrite } from 'wagmi';
 import { csdnAbi, getCsdnAddress } from '../../lib/csdn';
+import { resolveWalletError } from '../../lib/walletErrors';
 
 interface UnderwriterInsureButtonProps {
   noteId: bigint;
@@ -15,6 +16,7 @@ export function UnderwriterInsureButton({ noteId, coverAmount, label = 'Bind Sov
     functionName: 'insure',
     mode: 'recklesslyUnprepared'
   });
+  const { isConnected } = useAccount();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -32,8 +34,13 @@ export function UnderwriterInsureButton({ noteId, coverAmount, label = 'Bind Sov
 
   const handleClick = async () => {
     try {
-      setPending(true);
       setError(null);
+      setTxHash(null);
+      if (!isConnected) {
+        setError('Connect a wallet to continue.');
+        return;
+      }
+      setPending(true);
       if (!insure.writeAsync) {
         throw new Error('Wallet connection not ready');
       }
@@ -46,7 +53,7 @@ export function UnderwriterInsureButton({ noteId, coverAmount, label = 'Bind Sov
         setTxHash(hash);
       }
     } catch (err: any) {
-      setError(err.message ?? 'Failed to insure note');
+      setError(resolveWalletError(err, 'Failed to insure note'));
     } finally {
       setPending(false);
     }

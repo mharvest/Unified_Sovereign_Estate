@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useContractWrite } from 'wagmi';
+import { useAccount, useContractWrite } from 'wagmi';
 import { isAddress } from 'viem';
 import { csdnAbi, getCsdnAddress } from '../../lib/csdn';
+import { resolveWalletError } from '../../lib/walletErrors';
 
 interface TreasuryDistributeButtonProps {
   noteId: bigint;
@@ -17,6 +18,7 @@ export function TreasuryDistributeButton({ noteId, lp, amount, label = 'Mark Dis
     functionName: 'markDistribution',
     mode: 'recklesslyUnprepared'
   });
+  const { isConnected } = useAccount();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -34,8 +36,13 @@ export function TreasuryDistributeButton({ noteId, lp, amount, label = 'Mark Dis
 
   const handleClick = async () => {
     try {
-      setPending(true);
       setError(null);
+      setTxHash(null);
+      if (!isConnected) {
+        setError('Connect a wallet to continue.');
+        return;
+      }
+      setPending(true);
       if (!markDistribution.writeAsync) {
         throw new Error('Wallet connection not ready');
       }
@@ -51,7 +58,7 @@ export function TreasuryDistributeButton({ noteId, lp, amount, label = 'Mark Dis
         setTxHash(hash);
       }
     } catch (err: any) {
-      setError(err.message ?? 'Distribution failed');
+      setError(resolveWalletError(err, 'Distribution failed'));
     } finally {
       setPending(false);
     }
