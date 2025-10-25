@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 
 type Snapshot = {
@@ -101,7 +102,17 @@ export function NavTicker() {
   const price = displaySnap.price;
 
   return (
-    <div className="w-full overflow-hidden rounded-xl border border-violet-500/40 bg-gradient-to-r from-violet-900/60 via-purple-900/40 to-indigo-950/60 shadow-lg">
+    <div className="relative w-full overflow-hidden rounded-xl border border-violet-500/40 bg-gradient-to-r from-violet-900/60 via-purple-900/40 to-indigo-950/60 pt-14 shadow-lg sm:pt-16">
+      <div className="absolute -top-4 right-4 hidden translate-y-2 items-end gap-3 rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-xs uppercase tracking-[0.35em] text-violet-100 shadow-2xl backdrop-blur md:flex">
+        <Image
+          src="/HRVST_TRUST_LOGO.png"
+          alt="HRVST Sovereign Trust"
+          width={96}
+          height={96}
+          className="h-16 w-auto brightness-110 drop-shadow-lg"
+        />
+        <span className="pb-1 text-[10px] text-violet-200">Sovereign Trust</span>
+      </div>
       <div className="flex items-center justify-between px-6 py-4 text-sm font-mono uppercase tracking-wide">
         <div className="flex items-center gap-3">
           <span
