@@ -9,11 +9,22 @@ type Snapshot = {
 };
 
 const EKLESIA_URL = (process.env.NEXT_PUBLIC_EKLESIA_API_URL || 'http://localhost:4000').replace(/\/$/, '');
+const DEFAULT_SNAPSHOT: Snapshot = {
+  ts: Date.now(),
+  ok: false,
+  navPerToken: 1,
+  floor: 0.99,
+  price: 1.01,
+};
 
 export function NavTicker() {
   const [snap, setSnap] = useState<Snapshot | null>(null);
+  const [displaySnap, setDisplaySnap] = useState<Snapshot>(DEFAULT_SNAPSHOT);
   const [connected, setConnected] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const baseSnapRef = useRef<Snapshot>(DEFAULT_SNAPSHOT);
+  const rafRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number>(0);
 
   useEffect(() => {
     const source = new EventSource(`${EKLESIA_URL}/api/nav/preview`);
@@ -50,9 +61,44 @@ export function NavTicker() {
     return () => clearInterval(interval);
   }, [connected]);
 
-  const nav = snap?.navPerToken ?? 0;
-  const floor = snap?.floor ?? 0;
-  const price = snap?.price ?? 0;
+  useEffect(() => {
+    if (!snap) return;
+    baseSnapRef.current = snap;
+  }, [snap]);
+
+  useEffect(() => {
+    const baseFrequencyMs = 8000;
+    const update = (time: number) => {
+      if (startTimeRef.current === 0) {
+        startTimeRef.current = time;
+      }
+      const base = baseSnapRef.current;
+      const phase = ((time - startTimeRef.current) % baseFrequencyMs) / baseFrequencyMs * Math.PI * 2;
+      const wobble = (value: number, ratio: number, minimum: number, offset: number) => {
+        const amplitude = Math.max(Math.abs(value) * ratio, minimum);
+        return value + amplitude * Math.sin(phase + offset);
+      };
+
+      const next: Snapshot = {
+        ...base,
+        navPerToken: wobble(base.navPerToken, 0.015, 0.0005, 0),
+        floor: wobble(base.floor, 0.012, 0.0004, Math.PI / 2),
+        price: wobble(base.price, 0.02, 0.0006, Math.PI),
+      };
+
+      setDisplaySnap(next);
+      rafRef.current = requestAnimationFrame(update);
+    };
+
+    rafRef.current = requestAnimationFrame(update);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  const nav = displaySnap.navPerToken;
+  const floor = displaySnap.floor;
+  const price = displaySnap.price;
 
   return (
     <div className="w-full overflow-hidden rounded-xl border border-violet-500/40 bg-gradient-to-r from-violet-900/60 via-purple-900/40 to-indigo-950/60 shadow-lg">

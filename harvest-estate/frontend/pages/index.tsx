@@ -8,3 +8,7 @@ export default function IndexPage() {
   }, [router]);
   return null;
 }
+
+export async function getServerSideProps() {
+  return { props: {} };
+}

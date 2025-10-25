@@ -1,6 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-const BACKEND_URL = (process.env.EKLESIA_API_URL || process.env.NEXT_PUBLIC_EKLESIA_API_URL || 'http://localhost:4000').replace(/\/$/, '');
+const BACKEND_URL = (
+  process.env.SE7EN_API_URL ||
+  process.env.NEXT_PUBLIC_SE7EN_API_URL ||
+  'http://localhost:4000'
+).replace(/\/$/, '');
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {

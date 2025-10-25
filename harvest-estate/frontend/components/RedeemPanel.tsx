@@ -1,6 +1,11 @@
 import { FormEvent, useState } from 'react';
 
-export function RedeemPanel() {
+interface RedeemPanelProps {
+  currentMode: 'demo' | 'live';
+  onModeChange: (mode: 'demo' | 'live') => void;
+}
+
+export function RedeemPanel({ currentMode, onModeChange }: RedeemPanelProps) {
   const [holderId, setHolderId] = useState('');
   const [tokens, setTokens] = useState('');
   const [loading, setLoading] = useState(false);
@@ -36,12 +41,43 @@ export function RedeemPanel() {
     }
   }
 
+  const handleToggle = () => {
+    onModeChange(currentMode === 'demo' ? 'live' : 'demo');
+  };
+
   return (
     <div className="rounded-2xl border border-white/10 bg-black/50 p-6 shadow-lg">
-      <h2 className="text-lg font-semibold text-violet-200">Redeem HRVST Tokens</h2>
-      <p className="mb-4 text-sm text-gray-400">
-        Burns HRVST, debits Treasury stables, and records a CPA journal entry.
-      </p>
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-xs uppercase tracking-wide text-gray-400">
+        <div>
+          <h2 className="text-lg font-semibold text-violet-200">Redeem HRVST Tokens</h2>
+          <p className="text-xs text-gray-400">
+            Burns HRVST, debits Treasury stables, and records a CPA journal entry.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span
+            className={`rounded-full px-3 py-1 ${
+              currentMode === 'demo' ? 'bg-violet-600/60 text-white' : 'bg-white/10 text-gray-300'
+            }`}
+          >
+            Demo
+          </span>
+          <span
+            className={`rounded-full px-3 py-1 ${
+              currentMode === 'live' ? 'bg-amber-500/80 text-black' : 'bg-white/10 text-gray-300'
+            }`}
+          >
+            Live
+          </span>
+          <button
+            className="rounded-lg border border-white/20 px-3 py-1 text-[11px] uppercase text-gray-200 transition hover:border-white"
+            type="button"
+            onClick={handleToggle}
+          >
+            Toggle
+          </button>
+        </div>
+      </div>
       <form onSubmit={onSubmit} className="space-y-4 text-sm">
         <label className="block">
           <span className="text-xs uppercase tracking-wide text-gray-400">Holder Id</span>
