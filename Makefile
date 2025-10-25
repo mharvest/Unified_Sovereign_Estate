@@ -6,7 +6,18 @@ export PYTHONPATH := $(CURDIR)/src
 FOUNDRY ?= forge
 NPM ?= npm
 
-.PHONY: bootstrap dev lint lint-check test ensure-venv sol-build sol-test oracle oracle-dev frontend frontend-dev devnet-demo docker-up docker-down docker-smoke
+SIGN_ENABLED ?= false
+UPLOADS_ENABLED ?= false
+DEMO_ENV_FILE ?= harvest-estate/.env.demo
+SE7EN_DEMO_JWT ?= $(shell awk -F= '/^SE7EN_DEMO_JWT=/{print $$2}' $(DEMO_ENV_FILE) 2>/dev/null)
+SE7EN_DEMO_JWT_LAW ?= $(shell awk -F= '/^SE7EN_DEMO_JWT_LAW=/{print $$2}' $(DEMO_ENV_FILE) 2>/dev/null)
+SE7EN_DEMO_JWT_OPS ?= $(shell awk -F= '/^SE7EN_DEMO_JWT_OPS=/{print $$2}' $(DEMO_ENV_FILE) 2>/dev/null)
+SE7EN_DEMO_JWT_INSURANCE ?= $(shell awk -F= '/^SE7EN_DEMO_JWT_INSURANCE=/{print $$2}' $(DEMO_ENV_FILE) 2>/dev/null)
+SE7EN_DEMO_JWT_TREASURY ?= $(shell awk -F= '/^SE7EN_DEMO_JWT_TREASURY=/{print $$2}' $(DEMO_ENV_FILE) 2>/dev/null)
+SE7EN_BASE_URL ?= $(shell awk -F= '/^SE7EN_BASE_URL=/{print $$2}' $(DEMO_ENV_FILE) 2>/dev/null)
+SE7EN_BASE_URL := $(if $(strip $(SE7EN_BASE_URL)),$(strip $(SE7EN_BASE_URL)),http://localhost:4000)
+
+.PHONY: bootstrap dev lint lint-check test ensure-venv sol-build sol-test oracle oracle-dev frontend frontend-dev devnet-demo docker-up docker-down docker-smoke ledger-export attest-json demo-alpha sign-demo
 
 bootstrap: $(VENV)/bin/activate
 	@echo "Virtual environment ready. Run 'source $(VENV)/bin/activate' before developing."
@@ -72,3 +83,31 @@ docker-smoke:
 	  docker compose up --build -d && \
 	  sleep 20 && \
 	  docker compose ps
+
+subscribers-dev:
+	cd harvest-estate/se7en-backend && SUBSCRIBER_ENABLED=true $(NPM) run dev
+
+ledger-export:
+	curl -o ledger.csv http://localhost:4000/api/ledger/export
+
+attest-json:
+	cd harvest-estate/se7en-backend && $(NPM) run attest:json -- $(FILES)
+
+demo-alpha:
+	$(MAKE) -C harvest-estate build
+	SIGN_ENABLED=$(SIGN_ENABLED) UPLOADS_ENABLED=$(UPLOADS_ENABLED) $(MAKE) -C harvest-estate demo
+	cd harvest-estate/se7en-backend && ENV_FILE=../.env.demo $(NPM) run verify:env
+	cd harvest-estate/se7en-backend && \
+	  SE7EN_DEMO_JWT=$(SE7EN_DEMO_JWT) \
+	  SE7EN_DEMO_JWT_LAW=$(SE7EN_DEMO_JWT_LAW) \
+	  SE7EN_DEMO_JWT_OPS=$(SE7EN_DEMO_JWT_OPS) \
+	  SE7EN_DEMO_JWT_INSURANCE=$(SE7EN_DEMO_JWT_INSURANCE) \
+	  SE7EN_DEMO_JWT_TREASURY=$(SE7EN_DEMO_JWT_TREASURY) \
+	  SE7EN_BASE_URL=$(SE7EN_BASE_URL) \
+	  $(NPM) run demo:alpha
+	$(MAKE) ledger-export
+	cd harvest-estate/se7en-backend && $(NPM) run attest:json -- --output ../attestation-report.json
+	$(MAKE) -C harvest-estate stop
+
+sign-demo:
+	SIGN_ENABLED=true UPLOADS_ENABLED=true $(MAKE) demo-alpha

@@ -9,6 +9,7 @@ This repository packages the sovereign Web3 finance infrastructure for the Harve
 | Module | Function |
 |--------|----------|
 | **Se7en** | Backend orchestration and fiduciary logic engine |
+| **API Gateway** | Flask controller for intake → redemption workflow + verification |
 | **Eklesia** | Blockchain anchoring & transaction notarization |
 | **VaultQuant** | Token issuance, NAV, and liquidity management |
 | **SafeVault** | Sovereign data storage & CPA audit vault |
@@ -25,11 +26,14 @@ Dockerized full-stack system with a dual-mode Demo ↔ Live toggle.
 ```
 harvest-estate/
 ├── docker-compose.yml
-├── .env.demo
-├── .env.live
+├── .env.demo / .env.live
+├── api-gateway            # Flask + SQLAlchemy workflow controller
+├── contracts              # Foundry Solidity suite (CSDN, SDN, HRVST, etc.)
 ├── se7en-backend          # Fastify + Prisma backend
 ├── frontend               # Next.js fiduciary console + redeem UI
 └── infra                  # Dockerfile, scripts, seeded artifacts
+
+Workflow data tables now include assets, issuances, insurance bands, affidavits, users, and ledger logs to support investor demo audit traces.
 ```
 
 ---
@@ -47,6 +51,17 @@ harvest-estate/
 ### Build Containers
 ```bash
 docker-compose build
+```
+
+### Configure Environment
+Copy the provided examples and update contract addresses and orchestrator key as needed:
+
+```bash
+cp .env.example .env
+cp frontend/.env.example frontend/.env
+# populate EKLESIA_ADDRESS, SAFEVAULT_ADDRESS, etc. before running in live mode
+# set JWT_SECRET and mint role tokens via `npm run jwt:create`
+# assign generated values to SE7EN_DEMO_JWT / NEXT_PUBLIC_SE7EN_JWT as needed
 ```
 
 ### Launch in Demo Mode
@@ -68,6 +83,48 @@ Tests run:
 - NAV validation (`nav.test.ts`)
 - Redemption guardrails (`redemption.guard.test.ts`)
 - Ledger idempotency checks
+
+### Sovereign API Gateway
+Flask controller exposed at `http://localhost:5050` orchestrates the intake → redemption workflow and investor verification.
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| `POST` | `/intake` | Register or update collateral intake metadata |
+| `POST` | `/insurance` | Apply Matriarch multiplier + coverage JSON payload |
+| `POST` | `/mint` | Issue HRVST against approved assets (records Se7en ledger entry) |
+| `POST` | `/circulate` | Relay liquidity loop execution to the Kïïantu desk |
+| `POST` | `/redeem` | Proxy redemption requests into Se7en treasury guardrails |
+| `GET` | `/verify/<affidavitHash>` | Surface Eyeion affidavit metadata for investors |
+
+```bash
+curl -X POST http://localhost:5050/mint \
+  -H "Content-Type: application/json" \
+  -d '{"externalId":"HAS-ALPHA","quantity":380038.75,"navPerToken":0.91,"policyFloor":0.85}'
+```
+
+> **Env prerequisites**: the orchestrator expects `HARDHAT_RPC`, `ORCHESTRATOR_PRIVATE_KEY`, and contract addresses (`EKLESIA_ADDRESS`, `SAFEVAULT_ADDRESS`, `EYEION_ADDRESS`, `VAULTQUANT_ADDRESS`, `MATRIARCH_ADDRESS`, `HRVST_ADDRESS`, `KIANITU_ADDRESS`, `ANIMA_ADDRESS`) to be present before boot.
+
+### Demo Seed Flow
+
+Deploy lightweight demo contracts to Anvil and refresh `.env.demo` with their addresses:
+
+```bash
+cd se7en-backend
+npm run deploy-demo-contracts
+```
+
+> This script recompiles the in-repo Solidity stubs with `solc`, deploys them to the local Anvil node, and writes the resulting addresses (plus the funded deployer key) into `.env.demo`.
+
+To run the full Haskins Alpha lifecycle (intake → insurance → issuance → cycle → redemption):
+
+```bash
+cd se7en-backend
+npm run demo-seed
+```
+
+Set `CONTRACTS_MODE=STUB` (for example in `.env.demo`) if you want to exercise the flow without touching the chain. In stub mode the `recordAttestation`, coverage binding, and cycle bookkeeping are handled in-memory, so the script completes end-to-end even when Anvil or contract addresses are unavailable.
+
+The script summarizes attestation IDs per step and skips assets with outstanding evidence (e.g., Compton #24 document hashes).
 
 ---
 
@@ -108,6 +165,13 @@ Expected response:
 4. CPA ledger line item + Eyeion hash recorded
 5. NAV recalculation propagates to dashboard
 
+## Investor Demo Seed — Haskins Alpha
+`make seed-demo` resets the demo schema and loads:
+- **Haskins Alpha Estate (CSDN)** — $875,000 collateral, Matriarch 3.5× coverage, 380,038.75 HRVST issuance.
+- **Meridian Beta IP Trust (SDN)** — $620,000 valuation pending multiplier confirmation.
+- Fiduciary roster (Law, CPA, Treasury, Insurance, Ops, Governance, Oracle) for workflow sign-offs.
+- Ledger logs and Eyeion affidavits powering `/verify/<hash>` demonstrations.
+
 ---
 
 ## Security Controls
@@ -116,12 +180,41 @@ Expected response:
 - 4‑witness quorum verification (Se7en, Eyeion, VaultQuant, CPA)
 - Live monitoring at `/api/nav/preview` (SSE stream)
 
+### JWT Tokens
+- `JWT_SECRET` is required for Se7en to verify HMAC (HS256) signatures. Optional `JWT_ISSUER`/`JWT_AUDIENCE` can be supplied for additional checks.
+- Generate fiduciary tokens with `npm run jwt:create <ROLE> [subject]` inside `se7en-backend/`. Example:
+  ```bash
+  ENV_FILE=../.env.demo npm run jwt:create TREASURY demo-treasury
+  ```
+- Assign the resulting token to `SE7EN_DEMO_JWT` for automation scripts and/or `NEXT_PUBLIC_SE7EN_JWT` for the Next.js fiduciary console.
+- Route protection matrix:
+  | Route | Roles |
+  |-------|-------|
+  | `POST /intake` | LAW, OPS |
+  | `POST /insurance` | INSURANCE |
+  | `POST /mint` | TREASURY, OPS |
+  | `POST /circulate` | TREASURY, OPS |
+  | `POST /redeem` | TREASURY |
+
+### DocuSign Signing
+- Enable with `SIGN_ENABLED=true` (the `make sign-demo` target sets this automatically).
+- Issue envelopes via `POST /sign/envelope` (LAW/OPS roles) and ingest Connect callbacks through `POST /sign/webhook`.
+- Events persist to `SignatureEnvelope` / `SignatureEvent` tables for auditing.
+
+### SafeVault Uploads
+- Toggle with `SAFEVAULT_UPLOADS_ENABLED=true` (enabled automatically during `make sign-demo`).
+- Upload custody files via `POST /vault/upload` (LAW/OPS roles) using base64-encoded payloads; records land in `CustodyDoc` with the computed SHA-256.
+- Notifications are delivered over SMTP (MailHog by default at `http://localhost:8025`). Configure recipients with `SAFEVAULT_NOTIFICATION_TO`.
+- See `docs/vault.md` for the full runbook.
+
 ---
 
 ## Exports & Observability
 - `make ledger-export` downloads a CPA-ready CSV
 - `make nav-ticker` streams the live NAV SSE feed
 - `make redeem-demo` executes a scripted redemption pass
+- `make sign-demo` runs the automation loop with DocuSign signing and SafeVault uploads
+- MailHog web UI: http://localhost:8025 (SMTP inbox for demo emails)
 
 ---
 

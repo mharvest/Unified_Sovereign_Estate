@@ -1,4 +1,27 @@
+version: '3.9'
+
 services:
+  anvil:
+    image: ghcr.io/foundry-rs/foundry:latest
+    container_name: sovereign-anvil
+    command: anvil --host 0.0.0.0 --port 8545 --chain-id 31337 --block-time 1
+    environment:
+      ANVIL_IP_ADDR: 0.0.0.0
+    ports:
+      - '8545:8545'
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'cast block-number --rpc-url http://127.0.0.1:8545 >/dev/null 2>&1',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    networks:
+      - sovereign-net
+
   postgres:
     image: postgres:15
     container_name: estate_db
@@ -8,11 +31,88 @@ services:
       POSTGRES_PASSWORD: sovereign
       POSTGRES_DB: estate
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     ports:
       - '5433:5432'
+    networks:
+      - sovereign-net
 
-  backend:
+  eklesia:
+    image: node:20-alpine
+    container_name: eklesia-ledger
+    command: ['tail', '-f', '/dev/null']
+    environment:
+      SERVICE_ROLE: eklesia-ledger
+      ESTATE_MODE: ${ESTATE_MODE:-DEMO}
+    depends_on:
+      postgres:
+        condition: service_started
+    networks:
+      - sovereign-net
+
+  vaultquant:
+    image: node:20-alpine
+    container_name: vaultquant-mint
+    command: ['tail', '-f', '/dev/null']
+    environment:
+      SERVICE_ROLE: vaultquant-mint
+      ESTATE_MODE: ${ESTATE_MODE:-DEMO}
+    networks:
+      - sovereign-net
+
+  safevault:
+    image: node:20-alpine
+    container_name: safevault-custody
+    command: ['tail', '-f', '/dev/null']
+    environment:
+      SERVICE_ROLE: safevault
+      ESTATE_MODE: ${ESTATE_MODE:-DEMO}
+    volumes:
+      - safevault-data:/var/estate/custody
+    networks:
+      - sovereign-net
+
+  eyeion:
+    image: node:20-alpine
+    container_name: eyeion-legal
+    command: ['tail', '-f', '/dev/null']
+    environment:
+      SERVICE_ROLE: eyeion
+      ESTATE_MODE: ${ESTATE_MODE:-DEMO}
+    networks:
+      - sovereign-net
+
+  matriarch:
+    image: node:20-alpine
+    container_name: matriarch-insurance
+    command: ['tail', '-f', '/dev/null']
+    environment:
+      SERVICE_ROLE: matriarch
+      ESTATE_MODE: ${ESTATE_MODE:-DEMO}
+    networks:
+      - sovereign-net
+
+  kiiantu:
+    image: node:20-alpine
+    container_name: kiiantu-desk
+    command: ['tail', '-f', '/dev/null']
+    environment:
+      SERVICE_ROLE: kiiantu
+      ESTATE_MODE: ${ESTATE_MODE:-DEMO}
+    networks:
+      - sovereign-net
+
+  anima:
+    image: node:20-alpine
+    container_name: anima-governance
+    command: ['tail', '-f', '/dev/null']
+    environment:
+      SERVICE_ROLE: anima
+      ESTATE_MODE: ${ESTATE_MODE:-DEMO}
+    networks:
+      - sovereign-net
+
+  se7en:
     build: ./se7en-backend
     command: npm run start
     environment:
@@ -22,25 +122,138 @@ services:
       KMS_MODE: ${KMS_MODE:-MOCK}
       TREASURY_POLICY_ALPHA: ${TREASURY_POLICY_ALPHA:-0.75}
       TREASURY_POLICY_SPREAD_BPS: ${TREASURY_POLICY_SPREAD_BPS:-50}
+      CONTRACTS_MODE: ${CONTRACTS_MODE:-CHAIN}
+      HARDHAT_RPC: ${HARDHAT_RPC:-http://anvil:8545}
+      ORCHESTRATOR_PRIVATE_KEY: ${ORCHESTRATOR_PRIVATE_KEY:-0x0000000000000000000000000000000000000000000000000000000000000001}
+      EKLESIA_ADDRESS: ${EKLESIA_ADDRESS:-0x0000000000000000000000000000000000000000}
+      EYEION_ADDRESS: ${EYEION_ADDRESS:-0x0000000000000000000000000000000000000000}
+      SAFEVAULT_ADDRESS: ${SAFEVAULT_ADDRESS:-0x0000000000000000000000000000000000000000}
+      VAULTQUANT_ADDRESS: ${VAULTQUANT_ADDRESS:-0x0000000000000000000000000000000000000000}
+      MATRIARCH_ADDRESS: ${MATRIARCH_ADDRESS:-0x0000000000000000000000000000000000000000}
+      HRVST_ADDRESS: ${HRVST_ADDRESS:-0x0000000000000000000000000000000000000000}
+      KIANITU_ADDRESS: ${KIANITU_ADDRESS:-0x0000000000000000000000000000000000000000}
+      ANIMA_ADDRESS: ${ANIMA_ADDRESS:-0x0000000000000000000000000000000000000000}
+      JWT_SECRET: ${JWT_SECRET:-change-me-demo-secret}
+      SE7EN_DEMO_JWT: ${SE7EN_DEMO_JWT:-}
+      SIGN_ENABLED: ${SIGN_ENABLED:-false}
+      SIGN_PROVIDER: ${SIGN_PROVIDER:-STUB}
+      DOCUSIGN_WEBHOOK_PUBLIC_KEY: ${DOCUSIGN_WEBHOOK_PUBLIC_KEY:-}
+      SAFEVAULT_UPLOADS_ENABLED: ${SAFEVAULT_UPLOADS_ENABLED:-false}
+      SAFEVAULT_STORAGE_PATH: ${SAFEVAULT_STORAGE_PATH:-/var/estate/uploads}
+      SAFEVAULT_SMTP_HOST: ${SAFEVAULT_SMTP_HOST:-mailhog}
+      SAFEVAULT_SMTP_PORT: ${SAFEVAULT_SMTP_PORT:-1025}
+      SAFEVAULT_NOTIFICATION_TO: ${SAFEVAULT_NOTIFICATION_TO:-ops@harvest.estate}
     depends_on:
-      - postgres
+      anvil:
+        condition: service_healthy
+      postgres:
+        condition: service_started
+      eklesia:
+        condition: service_started
+      vaultquant:
+        condition: service_started
+      safevault:
+        condition: service_started
+      eyeion:
+        condition: service_started
+      matriarch:
+        condition: service_started
+      kiiantu:
+        condition: service_started
+      anima:
+        condition: service_started
+      mailhog:
+        condition: service_started
     ports:
       - '4000:4000'
     volumes:
       - ./se7en-backend:/app
       - ./infra:/infra
-      - backend_node_modules:/app/node_modules
+      - se7en_node_modules:/app/node_modules
+    networks:
+      - sovereign-net
+      - public-bridge
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'wget --spider -q http://localhost:4000/health || exit 1',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
 
+  api-gateway:
+    build: ./api-gateway
+    container_name: estate-api-gateway
+    environment:
+      ESTATE_MODE: ${ESTATE_MODE:-DEMO}
+      DATABASE_URL: postgresql+psycopg://se7en:sovereign@postgres:5432/estate
+      SE7EN_API_URL: http://se7en:4000
+      EKLESIA_API_URL: http://eklesia:8545
+    depends_on:
+      se7en:
+        condition: service_healthy
+      postgres:
+        condition: service_started
+    ports:
+      - '5050:5000'
+    networks:
+      - sovereign-net
+      - public-bridge
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health')\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+      
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: mailhog
+    restart: unless-stopped
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+    networks:
+      - public-bridge
   frontend:
     build: ./frontend
     environment:
-      NEXT_PUBLIC_EKLESIA_API_URL: http://localhost:4000
-      EKLESIA_API_URL: http://backend:4000
+      NEXT_PUBLIC_EKLESIA_API_URL: http://localhost:5050
+      NEXT_PUBLIC_SE7EN_API_URL: http://localhost:4000
+      EKLESIA_API_URL: http://api-gateway:5000
+      SE7EN_API_URL: http://se7en:4000
     ports:
       - '3000:3000'
     depends_on:
-      - backend
+      api-gateway:
+        condition: service_healthy
+      se7en:
+        condition: service_healthy
+    networks:
+      - public-bridge
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'wget --spider -q http://localhost:3000/api/health || exit 1',
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
 volumes:
-  pgdata:
-  backend_node_modules:
+  postgres-data:
+  safevault-data:
+  se7en_node_modules:
+
+networks:
+  sovereign-net:
+  public-bridge:

@@ -76,7 +76,11 @@ async function readSnapshot() {
 }
 
 export default async function navRoutes(app: FastifyInstance) {
-  app.get('/health', async () => ({ ok: true, service: 'se7en' }));
+  app.get('/health', async () => ({
+    ok: true,
+    module: 'se7en-orchestrator',
+    mode: (process.env.ESTATE_MODE || 'demo').toLowerCase(),
+  }));
 
   app.get('/api/nav', async () => ({ ts: Date.now(), ...(await readSnapshot()) }));
 

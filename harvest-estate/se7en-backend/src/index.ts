@@ -1,22 +1,22 @@
-import Fastify from 'fastify';
-import cors from '@fastify/cors';
 import dotenv from 'dotenv';
-import navRoutes from './routes/nav.js';
-import redemptionRoutes from './routes/redemption.js';
-import ledgerRoutes from './routes/ledger.js';
+import { buildApp } from './server.js';
+import { startSubscribers } from './subscribers/subscribers.js';
+import { createStubGateway } from './lib/contractsStub.js';
 
 dotenv.config();
 
 const mode = process.env.ESTATE_MODE ?? 'DEMO';
 const port = Number(process.env.PORT ?? 4000);
+const contractsMode = (process.env.CONTRACTS_MODE ?? 'CHAIN').toUpperCase();
 
 async function main() {
-  const app = Fastify({ logger: true });
+  const contracts =
+    contractsMode === 'STUB'
+      ? createStubGateway()
+      : undefined;
 
-  await app.register(cors, { origin: true });
-  await app.register(navRoutes);
-  await app.register(redemptionRoutes);
-  await app.register(ledgerRoutes);
+  const app = buildApp({ contracts });
+  let subscriberController = await startSubscribers(app);
 
   if (mode === 'DEMO') {
     app.log.info('Running in DEMO Mode – Mock KMS Enabled');
@@ -26,13 +26,36 @@ async function main() {
     app.log.warn({ mode }, 'Running in custom Estate mode');
   }
 
+  if (contractsMode === 'STUB') {
+    app.log.info('Contracts gateway running in STUB mode – on-chain interactions mocked');
+  }
+
   try {
     await app.listen({ port, host: '0.0.0.0' });
     app.log.info(`Se7en backend ready on port ${port}`);
   } catch (err) {
     app.log.error(err, 'Failed to start Se7en backend');
+    if (subscriberController) {
+      await subscriberController.stop();
+    }
     process.exit(1);
   }
+
+  const shutdown = async () => {
+    try {
+      await app.close();
+    } catch (error) {
+      app.log.error(error, 'Failed to close Fastify app');
+    }
+    if (subscriberController) {
+      await subscriberController.stop();
+      subscriberController = undefined;
+    }
+    process.exit(0);
+  };
+
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }
 
 main();
