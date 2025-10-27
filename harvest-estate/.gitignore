@@ -3,3 +3,4 @@ frontend/node_modules/
 se7en-backend/node_modules/
 harvest-estate/frontend/node_modules/
 harvest-estate/se7en-backend/node_modules/
+solana-programs/target/

@@ -1,0 +1,437 @@
+{
+  "address": "6hhNH6ez64m6staC2fqXW2oxEnXwpGyXXSnBNt5Gr41V",
+  "metadata": {
+    "name": "safevault_link",
+    "version": "0.1.0",
+    "spec": "0.1.0"
+  },
+  "instructions": [
+    {
+      "name": "finalize_custody",
+      "discriminator": [
+        67,
+        224,
+        163,
+        93,
+        23,
+        38,
+        28,
+        81
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "asset_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "asset_id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize_config",
+      "discriminator": [
+        208,
+        127,
+        21,
+        1,
+        194,
+        190,
+        196,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "eyeion_program",
+          "type": "pubkey"
+        },
+        {
+          "name": "eklesia_program",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "register_custody",
+      "discriminator": [
+        180,
+        187,
+        103,
+        143,
+        8,
+        63,
+        161,
+        101
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "asset_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "asset_id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "doc_hashes",
+          "type": {
+            "vec": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Config",
+      "discriminator": [
+        155,
+        12,
+        170,
+        224,
+        30,
+        250,
+        204,
+        130
+      ]
+    },
+    {
+      "name": "CustodyVault",
+      "discriminator": [
+        9,
+        225,
+        23,
+        25,
+        23,
+        223,
+        65,
+        72
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "CustodyFinalized",
+      "discriminator": [
+        192,
+        232,
+        47,
+        49,
+        20,
+        9,
+        95,
+        82
+      ]
+    },
+    {
+      "name": "CustodyRegistered",
+      "discriminator": [
+        157,
+        98,
+        224,
+        155,
+        84,
+        150,
+        68,
+        77
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "BumpNotFound",
+      "msg": "Bump not found in context"
+    },
+    {
+      "code": 6001,
+      "name": "MissingDocHashes",
+      "msg": "At least one document hash is required"
+    },
+    {
+      "code": 6002,
+      "name": "TooManyDocHashes",
+      "msg": "Too many document hashes provided"
+    },
+    {
+      "code": 6003,
+      "name": "AssetMismatch",
+      "msg": "Asset identifier mismatch"
+    },
+    {
+      "code": 6004,
+      "name": "UnauthorizedCustodian",
+      "msg": "Unauthorized custodian"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidStatusForFinalize",
+      "msg": "Custody must be registered before finalizing"
+    }
+  ],
+  "types": [
+    {
+      "name": "Config",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "eyeion_program",
+            "type": "pubkey"
+          },
+          {
+            "name": "eklesia_program",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CustodyFinalized",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "asset_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "actor",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CustodyRegistered",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "asset_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "doc_hashes",
+            "type": {
+              "vec": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          },
+          {
+            "name": "actor",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CustodyVault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "asset_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "custodian",
+            "type": "pubkey"
+          },
+          {
+            "name": "status",
+            "type": "u8"
+          },
+          {
+            "name": "last_registered_ts",
+            "type": "i64"
+          },
+          {
+            "name": "doc_hashes",
+            "type": {
+              "vec": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

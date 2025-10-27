@@ -64,6 +64,19 @@ cp frontend/.env.example frontend/.env
 # assign generated values to SE7EN_DEMO_JWT / NEXT_PUBLIC_SE7EN_JWT as needed
 ```
 
+### JWT Auth Configuration
+- `se7en-backend` now blocks intake, issuance, insurance, peg, cycle, redeem, and verify routes unless a valid Bearer token is supplied.
+- Set `JWT_SECRET` in every environment and optionally `JWT_ISSUER` / `JWT_AUDIENCE` (comma-separated) if you need to pin expected claims.
+- Issue operator tokens with `npm run jwt:create -- --role TREASURY` (swap the role for LAW, OPS, INSURANCE, GOVERNANCE, AUDITOR as needed) and store them in `.env.demo`, `.env.live`, or your secret manager.
+- Clients must forward `Authorization: Bearer <token>`; for example, `/cycle/arm` accepts `TREASURY` or `OPS`, while custody intake allows `LAW` or `OPS`.
+- When the secret is missing the service responds with `{ ok: false, error: "auth_disabled" }`, so wire this into deployment smoke checks.
+
+### Signing & Ledger Updates
+- `/sign/envelope` and `/sign/webhook` are live again; set `SIGN_ENABLED=true` and provide your provider/store (defaults stay stub) to exercise the flow.
+- `/ledger/export` now streams CSV directly from audit logs—requires JWT roles `LAW`, `GOVERNANCE`, or `AUDITOR`.
+- `/vault/upload` remains guarded (`LAW`/`OPS`) and needs `SAFEVAULT_UPLOADS_ENABLED=true` plus storage/SMTP settings before toggling.
+- Container deployments should surface `NEEDED_EVIDENCE_PATH` (compose defaults it to `/app/docs/needed-evidence.md`) so the guard plugin can update evidence status inside the container volume.
+
 ### Launch in Demo Mode
 ```bash
 make demo

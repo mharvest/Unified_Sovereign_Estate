@@ -1,25 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { buildLedgerCsv } from '../src/routes/ledger.js';
+import { buildLedgerCsv, toLedgerRecord } from '../src/lib/ledger.ts';
 
 describe('buildLedgerCsv', () => {
   it('creates CSV string with escaping for special characters', () => {
     const csv = buildLedgerCsv([
-      {
+      toLedgerRecord({
         id: 1,
         holderId: 'ALPHA-001',
         tokens: '1500.00',
         usdPaid: '1275.00',
         pricePerToken: '0.85',
         createdAt: new Date('2024-07-01T12:00:00.000Z'),
-      },
-      {
+      }),
+      toLedgerRecord({
         id: 2,
         holderId: 'BETA,002',
         tokens: '500',
         usdPaid: '410.50',
         pricePerToken: '0.82',
         createdAt: new Date('2024-07-02T12:00:00.000Z'),
-      },
+      }),
     ]);
 
     const lines = csv.split('\n');

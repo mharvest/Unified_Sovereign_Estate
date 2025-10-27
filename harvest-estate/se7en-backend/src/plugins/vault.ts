@@ -2,7 +2,7 @@ import fp from 'fastify-plugin';
 import type { FastifyInstance } from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import { promises as fs } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
 import net from 'node:net';
 
@@ -87,6 +87,7 @@ function createPrismaRepository(client?: PrismaClient): VaultRepository {
           status: status ?? 'PENDING_SIGNATURE',
         },
         create: {
+          id: randomUUID(),
           assetId,
           name,
           sha256,
@@ -245,7 +246,14 @@ function createSmtpMailer(options: SmtpMailerOptions): Mailer {
 export default fp<VaultPluginOptions>(async function vaultPlugin(app: FastifyInstance, opts) {
   const enabled = opts?.enabled ?? (process.env.SAFEVAULT_UPLOADS_ENABLED ?? 'false').toLowerCase() === 'true';
   const storagePath = opts?.storagePath ?? process.env.SAFEVAULT_STORAGE_PATH ?? path.resolve(process.cwd(), 'var/safevault');
-  const repository = opts?.repository ?? createPrismaRepository();
+  const repository: VaultRepository =
+    opts?.repository ??
+    (enabled
+      ? createPrismaRepository()
+      : {
+          async createOrUpdateDoc() {},
+          async close() {},
+        });
   const mailer = opts?.mailer !== undefined ? opts.mailer : createSmtpMailerFromEnv();
   const defaultRecipients = opts?.defaultRecipients ?? (process.env.SAFEVAULT_NOTIFICATION_TO?.split(',').map((entry) => entry.trim()).filter(Boolean) ?? []);
   const defaultFrom = opts?.defaultFrom ?? process.env.SAFEVAULT_NOTIFICATION_FROM ?? 'vault@harvest.estate';

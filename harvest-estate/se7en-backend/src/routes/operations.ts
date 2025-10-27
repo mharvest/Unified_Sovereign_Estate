@@ -7,6 +7,7 @@ import { prisma } from '../lib/prisma.js';
 import { computeAssetId, registerCustody } from '../chain/safevault.js';
 import { resolveActuarialClass, verifyActuarialHash } from '../lib/actuarial.js';
 import { fetchSignedNavSnapshot, verifyNavSnapshot, payloadDigest } from '../lib/nav.js';
+import { VaultMailerError } from '../plugins/vault.js';
 
 interface TodoResponse {
   ok: false;
@@ -104,8 +105,17 @@ const CycleStatusSchema = z.object({
     .optional(),
 });
 
+const VaultUploadSchema = z.object({
+  assetId: z.string().min(1),
+  fileName: z.string().min(1),
+  content: z.string().min(1),
+  mimeType: z.string().optional(),
+  notify: z.boolean().optional(),
+  recipients: z.array(z.string().min(1)).optional(),
+});
+
 export default async function operationsRoutes(app: FastifyInstance) {
-  app.post('/intake', async (request, reply) => {
+  app.post('/intake', { preHandler: app.authorize(['LAW', 'OPS']) }, async (request, reply) => {
     try {
       await app.ensurePreconditions();
     } catch (error) {
@@ -162,7 +172,7 @@ export default async function operationsRoutes(app: FastifyInstance) {
     });
   });
 
-  app.post('/issuance', async (request, reply) => {
+  app.post('/issuance', { preHandler: app.authorize(['TREASURY']) }, async (request, reply) => {
     try {
       await app.ensurePreconditions();
     } catch (error) {
@@ -238,7 +248,7 @@ export default async function operationsRoutes(app: FastifyInstance) {
     });
   });
 
-  app.post('/insurance', async (request, reply) => {
+  app.post('/insurance', { preHandler: app.authorize(['INSURANCE', 'OPS']) }, async (request, reply) => {
     try {
       await app.ensurePreconditions();
     } catch (error) {
@@ -338,7 +348,7 @@ export default async function operationsRoutes(app: FastifyInstance) {
     });
   });
 
-  app.post('/peg/mint', async (request, reply) => {
+  app.post('/peg/mint', { preHandler: app.authorize(['TREASURY']) }, async (request, reply) => {
     try {
       await app.ensurePreconditions({ requireLiveReadiness: true });
     } catch (error) {
@@ -445,7 +455,7 @@ export default async function operationsRoutes(app: FastifyInstance) {
     });
   });
 
-  app.post('/cycle/arm', async (request, reply) => {
+  app.post('/cycle/arm', { preHandler: app.authorize(['TREASURY', 'OPS']) }, async (request, reply) => {
     try {
       await app.ensurePreconditions();
     } catch (error) {
@@ -556,7 +566,10 @@ export default async function operationsRoutes(app: FastifyInstance) {
     });
   });
 
-  app.patch('/cycle/:id/status', async (request, reply) => {
+  app.patch(
+    '/cycle/:id/status',
+    { preHandler: app.authorize(['TREASURY', 'OPS']) },
+    async (request, reply) => {
     try {
       await app.ensurePreconditions();
     } catch (error) {
@@ -564,11 +577,7 @@ export default async function operationsRoutes(app: FastifyInstance) {
       return reply.status(428).send(response);
     }
 
-    const role = request.user?.role ?? request.headers['x-test-role'];
-    if (!role || !['TREASURY', 'OPS'].includes(String(role))) {
-      return reply.status(403).send({ ok: false, error: 'forbidden' });
-    }
-
+    const actorRole = String(request.user?.role ?? 'unknown');
     const cycleIdParam = request.params?.id;
     if (!cycleIdParam || typeof cycleIdParam !== 'string') {
       return reply.status(400).send({ ok: false, error: 'invalid_cycle_id' });
@@ -598,7 +607,7 @@ export default async function operationsRoutes(app: FastifyInstance) {
         metadata: {
           ...(cycle.metadata ?? {}),
           manualUpdate: {
-            actor: String(role),
+            actor: actorRole,
             at: now.toISOString(),
             error: input.error ?? null,
           },
@@ -615,7 +624,7 @@ export default async function operationsRoutes(app: FastifyInstance) {
           txHash: updated.txHash,
           payload: {
             route: 'PATCH /cycle/:id/status',
-            actor: String(role),
+            actor: actorRole,
             cycleId: updated.id,
             status: updated.status,
             txHash: updated.txHash,
@@ -650,7 +659,7 @@ export default async function operationsRoutes(app: FastifyInstance) {
     });
   });
 
-  app.post('/redeem', async (_request, reply) => {
+  app.post('/redeem', { preHandler: app.authorize(['TREASURY', 'OPS']) }, async (_request, reply) => {
     try {
       await app.ensurePreconditions({ requireLiveReadiness: true });
     } catch (error) {
@@ -660,13 +669,60 @@ export default async function operationsRoutes(app: FastifyInstance) {
     return reply.status(428).send(buildTodoResponse(app, 'VaultQuant redemption path pending Nav + affidavit enforcement.'));
   });
 
-  app.get('/verify/:id', async (_request, reply) => {
-    try {
-      await app.ensurePreconditions();
-    } catch (error) {
-      const response = buildTodoResponse(app, 'Verification requires custody and affidavit inputs.');
-      return reply.status(428).send(response);
-    }
-    return reply.status(428).send(buildTodoResponse(app, 'Verification bundle generation not yet implemented.'));
-  });
+  app.get(
+    '/verify/:id',
+    { preHandler: app.authorize(['AUDITOR', 'GOVERNANCE', 'LAW']) },
+    async (_request, reply) => {
+      try {
+        await app.ensurePreconditions();
+      } catch (error) {
+        const response = buildTodoResponse(app, 'Verification requires custody and affidavit inputs.');
+        return reply.status(428).send(response);
+      }
+      return reply.status(428).send(
+        buildTodoResponse(app, 'Verification bundle generation not yet implemented.'),
+      );
+    },
+  );
+
+  app.post(
+    '/vault/upload',
+    { preHandler: app.authorize(['LAW', 'OPS']) },
+    async (request, reply) => {
+      if (!app.vault || !app.vault.enabled) {
+        return reply.status(503).send({ ok: false, error: 'uploads_disabled' });
+      }
+
+      const input = VaultUploadSchema.parse(request.body ?? {});
+      const buffer = Buffer.from(input.content, 'base64');
+      if (buffer.length === 0) {
+        return reply.status(400).send({ ok: false, error: 'invalid_content' });
+      }
+
+      try {
+        const result = await app.vault.saveDocument({
+          assetId: input.assetId,
+          fileName: input.fileName,
+          buffer,
+          mimeType: input.mimeType,
+          notify: input.notify,
+          recipients: input.recipients,
+        });
+
+        return reply.status(201).send({
+          ok: true,
+          assetId: result.assetId,
+          fileName: result.fileName,
+          sha256: result.sha256,
+          path: result.path,
+        });
+      } catch (error) {
+        if (error instanceof VaultMailerError) {
+          return reply.status(502).send({ ok: false, error: 'notification_failed', detail: error.reason });
+        }
+        request.log.error({ err: error }, 'vault upload failed');
+        return reply.status(500).send({ ok: false, error: 'upload_failed' });
+      }
+    },
+  );
 }

@@ -1,69 +1,121 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+
+vi.mock('../src/lib/prisma.js', () => ({
+  prisma: {
+    auditLog: {
+      create: vi.fn(),
+    },
+  },
+}));
+
 import { buildApp } from '../src/server.js';
-import { createJwt, createStubContracts, MemoryAuditLogger } from './stubs.js';
+import { createJwt, createStubContracts } from './stubs.js';
+import { prisma } from '../src/lib/prisma.js';
 
-const DOC_HASH = ('0x' + 'b'.repeat(64)) as `0x${string}`;
+describe('POST /issuance', () => {
+  const token = createJwt('TREASURY');
+  const auditCreateMock = prisma.auditLog.create as unknown as Mock;
 
-describe('POST /mint', () => {
-  it('rejects when custody is missing', async () => {
-    const contracts = createStubContracts({
-      async hasCustody() {
-        return false;
-      },
-    });
-    const audit = new MemoryAuditLogger();
-    const app = buildApp({ contracts, audit });
-    const token = createJwt('TREASURY');
+  beforeEach(() => {
+    auditCreateMock.mockReset();
+  });
 
-    const res = await app.inject({
+  it('returns 503 when the contracts gateway is unavailable', async () => {
+    auditCreateMock.mockResolvedValue({ id: 'audit' });
+    const contracts = {
+      ...createStubContracts(),
+      issueInstrument: undefined,
+    } as any;
+
+    const app = buildApp({ contracts });
+
+    const response = await app.inject({
       method: 'POST',
-      url: '/mint',
+      url: '/issuance',
+      headers: { authorization: `Bearer ${token}` },
       payload: {
         instrument: 'CSDN',
         assetLabel: 'HASKINS-16315',
-        par: '1000',
-        affidavitId: DOC_HASH,
+        notionalUsd: '1000',
       },
-      headers: { authorization: `Bearer ${token}` },
     });
 
-    expect(res.statusCode).toBe(409);
-    expect(audit.records.length).toBe(0);
+    expect(response.statusCode).toBe(503);
+    expect(auditCreateMock).not.toHaveBeenCalled();
     await app.close();
   });
 
-  it('creates issuance attestation when gates pass', async () => {
+  it('records issuance metadata when the contract call succeeds', async () => {
+    auditCreateMock.mockResolvedValue({ id: 'audit-1' });
     const contracts = createStubContracts({
-      async hasCustody() {
-        return true;
-      },
-      async latestAffidavit() {
-        return DOC_HASH;
-      },
-      async animaOk() {
-        return true;
+      async issueInstrument() {
+        return {
+          noteId: 42n,
+          attestationId: '0xattestation',
+          txHash: '0xtxhash',
+        };
       },
     });
-    const audit = new MemoryAuditLogger();
-    const app = buildApp({ contracts, audit });
-    const token = createJwt('TREASURY');
 
-    const res = await app.inject({
+    const app = buildApp({ contracts });
+    const response = await app.inject({
       method: 'POST',
-      url: '/mint',
+      url: '/issuance',
+      headers: { authorization: `Bearer ${token}` },
       payload: {
         instrument: 'CSDN',
         assetLabel: 'HASKINS-16315',
-        par: '1000',
+        notionalUsd: '1000',
+        notes: 'Initial issuance',
       },
-      headers: { authorization: `Bearer ${token}` },
     });
 
-    expect(res.statusCode).toBe(201);
-    const body = res.json();
-    expect(body.noteId).toBeDefined();
-    expect(audit.records.length).toBe(1);
-    expect(audit.records[0].action).toBe('ISSUANCE');
+    expect(response.statusCode).toBe(201);
+    const body = response.json();
+    expect(body.ok).toBe(true);
+    expect(body.noteId).toBe('42');
+    expect(body.attestationId).toBe('0xattestation');
+    expect(body.txHash).toBe('0xtxhash');
+
+    expect(auditCreateMock).toHaveBeenCalledTimes(1);
+    const auditPayload = auditCreateMock.mock.calls[0][0];
+    expect(auditPayload.data.action).toBe('ISSUANCE_ATTEMPT');
+    expect(auditPayload.data.payload.result).toBe('ok');
+    expect(auditPayload.data.payload.noteId).toBe('42');
+
+    await app.close();
+  });
+
+  it('returns 502 and logs a warning when issuance fails', async () => {
+    auditCreateMock.mockResolvedValue({ id: 'audit-2' });
+    const contracts = createStubContracts({
+      async issueInstrument() {
+        throw new Error('oracle_unavailable');
+      },
+    });
+
+    const app = buildApp({ contracts });
+    const response = await app.inject({
+      method: 'POST',
+      url: '/issuance',
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        instrument: 'CSDN',
+        assetLabel: 'HASKINS-16315',
+        notionalUsd: '1000',
+      },
+    });
+
+    expect(response.statusCode).toBe(502);
+    const body = response.json();
+    expect(body.error).toBe('issuance_failed');
+    expect(body.detail).toBe('oracle_unavailable');
+
+    expect(auditCreateMock).toHaveBeenCalledTimes(1);
+    const auditPayload = auditCreateMock.mock.calls[0][0];
+    expect(auditPayload.data.action).toBe('ISSUANCE_ATTEMPT_WITH_WARNING');
+    expect(auditPayload.data.payload.result).toBe('warn');
+
     await app.close();
   });
 });

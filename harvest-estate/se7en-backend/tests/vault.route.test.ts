@@ -36,6 +36,7 @@ describe('POST /vault/upload', () => {
     });
 
     expect(res.statusCode).toBe(503);
+    expect(res.json().error).toBe('uploads_disabled');
     await app.close();
   });
 
@@ -71,6 +72,7 @@ describe('POST /vault/upload', () => {
 
     expect(res.statusCode).toBe(201);
     const body = res.json();
+    expect(body.ok).toBe(true);
     expect(body.sha256).toMatch(/^0x[0-9a-f]{64}$/);
     expect(repo.docs).toHaveLength(1);
     expect(repo.docs[0].sha256).toBe(body.sha256);
@@ -115,6 +117,7 @@ describe('POST /vault/upload', () => {
     });
 
     expect(res.statusCode).toBe(502);
+    expect(res.json().error).toBe('notification_failed');
     await app.close();
     await rm(dir, { recursive: true, force: true });
   });

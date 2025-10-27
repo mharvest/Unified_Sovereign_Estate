@@ -41,6 +41,7 @@ describe('signing routes', () => {
     });
 
     expect(res.statusCode).toBe(503);
+    expect(res.json().error).toBe('signing_disabled');
     await app.close();
   });
 
@@ -57,6 +58,7 @@ describe('signing routes', () => {
 
     expect(res.statusCode).toBe(201);
     const body = res.json();
+    expect(body.ok).toBe(true);
     expect(body.envelopeId).toMatch(/^env_/);
     expect(store.envelopes).toHaveLength(1);
     expect(store.envelopes[0].status).toBe('SENT');

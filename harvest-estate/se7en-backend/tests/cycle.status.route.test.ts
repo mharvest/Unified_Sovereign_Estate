@@ -84,7 +84,7 @@ describe('PATCH /cycle/:id/status', () => {
         gasUsed: '21000',
         gasPrice: '1000000000',
       },
-      headers: { authorization: `Bearer ${token}`, 'x-test-role': 'TREASURY' },
+      headers: { authorization: `Bearer ${token}` },
     });
 
     expect(response.statusCode).toBe(200);
@@ -131,7 +131,7 @@ describe('PATCH /cycle/:id/status', () => {
       method: 'PATCH',
       url: '/cycle/missing-cycle/status',
       payload: { status: 'FAILED' },
-      headers: { authorization: `Bearer ${token}`, 'x-test-role': 'TREASURY' },
+      headers: { authorization: `Bearer ${token}` },
     });
 
     expect(response.statusCode).toBe(404);
