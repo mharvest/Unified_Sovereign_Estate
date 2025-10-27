@@ -10,7 +10,7 @@ declare module 'fastify' {
 
 export interface AuditEntry {
   action: string;
-  assetId: string;
+  assetId?: string;
   attestationId?: string | null;
   txHash?: string | null;
   payload?: unknown;
@@ -18,7 +18,7 @@ export interface AuditEntry {
 
 export interface AuditLogger {
   log(entry: AuditEntry): Promise<void>;
-  findByAttestation(attestationId: string): Promise<AuditLogRecord | null>;
+  history(limit?: number): Promise<AuditLogRecord[]>;
 }
 
 export interface AuditLogRecord {
@@ -40,18 +40,19 @@ export default fp(async (app: FastifyInstance) => {
         await prisma.auditLog.create({
           data: {
             action: entry.action,
-            assetId: entry.assetId,
+            assetId: entry.assetId ?? 'system',
             attestationId: entry.attestationId ?? null,
             txHash: entry.txHash ?? null,
-            payload: entry.payload ?? null,
+            payload: entry.payload ?? {},
           },
         });
       },
-      async findByAttestation(attestationId) {
-        if (!attestationId) return null;
-        const record = await prisma.auditLog.findFirst({ where: { attestationId } });
-        if (!record) return null;
-        return {
+      async history(limit = 50) {
+        const records = await prisma.auditLog.findMany({
+          orderBy: { createdAt: 'desc' },
+          take: limit,
+        });
+        return records.map((record) => ({
           id: record.id,
           action: record.action,
           assetId: record.assetId,
@@ -59,7 +60,7 @@ export default fp(async (app: FastifyInstance) => {
           txHash: record.txHash,
           payload: record.payload,
           createdAt: record.createdAt,
-        };
+        }));
       },
     };
 

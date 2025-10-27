@@ -30,10 +30,9 @@ export async function ensureContractsConfigured(
   if (app.audit) {
     await app.audit.log({
       action,
-      assetId: NULL_ADDRESS,
-      attestationId: null,
-      txHash: null,
+      assetId: 'system',
       payload: {
+        result: 'error',
         reason: 'ADDR_MISSING',
         missing,
         metadata,
