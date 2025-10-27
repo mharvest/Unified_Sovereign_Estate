@@ -16,7 +16,7 @@ const originalClients = { ...clients };
 
 beforeEach(() => {
   clients.eklesia = '0x0000000000000000000000000000000000000101' as Hex;
-  clients.safevault = '0x0000000000000000000000000000000000000102' as Hex;
+  clients.safeVault = '0x0000000000000000000000000000000000000102' as Hex;
 });
 
 afterEach(() => {
@@ -49,7 +49,7 @@ describe('parseLogs', () => {
         docHash: '0x' + '6'.repeat(64),
         actor: '0x' + '7'.repeat(40),
       },
-      clients.safevault as Hex,
+      clients.safeVault as Hex,
       { logIndex: 1, txHash: '0x' + 'b'.repeat(64) },
     );
 
@@ -61,7 +61,7 @@ describe('parseLogs', () => {
       mockClient as unknown as Parameters<typeof parseLogs>[0],
       1n,
       10n,
-      [clients.eklesia as Hex, clients.safevault as Hex],
+      [clients.eklesia as Hex, clients.safeVault as Hex],
     );
 
     expect(events).toHaveLength(2);
