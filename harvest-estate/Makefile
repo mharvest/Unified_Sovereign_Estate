@@ -7,6 +7,9 @@ LIVE_ENV=.env.live
 
 .PHONY: build demo live stop restart logs test seed-demo nav-ticker ledger-export redeem-demo clean attest-json
 
+cycle-watcher:
+	cd se7en-backend && npx tsx scripts/run_cycle_watcher.ts
+
 build:
 	docker-compose build
 

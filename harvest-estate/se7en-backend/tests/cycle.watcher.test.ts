@@ -58,6 +58,11 @@ describe('reconcileCycles', () => {
 
     const publicClientStub = {
       getBlockNumber: vi.fn().mockResolvedValue(12n),
+      getTransactionReceipt: vi.fn().mockResolvedValue({
+        blockNumber: 12n,
+        gasUsed: 21000n,
+        effectiveGasPrice: 1_000_000_000n,
+      }),
     };
 
     const contractsStub = {
@@ -101,10 +106,18 @@ describe('reconcileCycles', () => {
     expect(prismaStub.cycle.findFirst).toHaveBeenCalledTimes(1);
     expect(prismaStub.cycle.update).toHaveBeenCalledTimes(1);
     expect(prismaStub.cycle.update.mock.calls[0][0].data.status).toBe('EXECUTED');
-    expect(prismaStub.cycle.update.mock.calls[0][0].data.metadata.onChainUpdate.txHash).toMatch(/^0x/);
+    const updateArgs = prismaStub.cycle.update.mock.calls[0][0];
+    expect(updateArgs.data.metadata.onChainUpdate.txHash).toMatch(/^0x/);
+    expect(updateArgs.data.blockNumber).toBe(12n);
+    expect(updateArgs.data.gasUsed).toBe(21000n);
+    expect(updateArgs.data.gasPrice).toBe(1_000_000_000n);
 
     expect(prismaStub.auditLog.create).toHaveBeenCalledTimes(1);
-    expect(prismaStub.auditLog.create.mock.calls[0][0].data.payload.status).toBe('EXECUTED');
+    const auditPayload = prismaStub.auditLog.create.mock.calls[0][0].data.payload;
+    expect(auditPayload.status).toBe('EXECUTED');
+    expect(auditPayload.blockNumber).toBe(12);
+    expect(auditPayload.gasUsed).toBe('21000');
+    expect(auditPayload.gasPrice).toBe('1000000000');
 
     expect(prismaStub.attestationEvent.create).toHaveBeenCalledTimes(1);
     const attestationPayload = prismaStub.attestationEvent.create.mock.calls[0][0].data.payload;
@@ -114,6 +127,9 @@ describe('reconcileCycles', () => {
       par: '1000',
       nav: '1050',
     });
+    expect(attestationPayload.blockNumber).toBe('12');
+    expect(attestationPayload.gasUsed).toBe('21000');
+    expect(attestationPayload.gasPrice).toBe('1000000000');
 
     expect(cursorState.lastBlock).toBe(12n);
   });

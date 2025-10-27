@@ -38,6 +38,9 @@ describe('PATCH /cycle/:id/status', () => {
       operator: null,
       metadata: {},
       executedAt: null,
+      blockNumber: null,
+      gasUsed: null,
+      gasPrice: null,
     });
 
     const updatedRecord = {
@@ -50,6 +53,9 @@ describe('PATCH /cycle/:id/status', () => {
       metadata: { manualUpdate: { actor: 'TREASURY', at: new Date().toISOString(), error: null } },
       executedAt: new Date(),
       failedAt: null,
+      blockNumber: 12n,
+      gasUsed: 21000n,
+      gasPrice: 1_000_000_000n,
     };
 
     const cycleUpdateMock = prisma.cycle.update as unknown as Mock;
@@ -74,6 +80,9 @@ describe('PATCH /cycle/:id/status', () => {
         cycleId: updatedRecord.cycleId,
         txHash: updatedRecord.txHash,
         operator: updatedRecord.operator,
+        blockNumber: '12',
+        gasUsed: '21000',
+        gasPrice: '1000000000',
       },
       headers: { authorization: `Bearer ${token}`, 'x-test-role': 'TREASURY' },
     });
@@ -83,6 +92,9 @@ describe('PATCH /cycle/:id/status', () => {
     expect(body.ok).toBe(true);
     expect(body.cycle.status).toBe('EXECUTED');
     expect(body.cycle.failedAt).toBeNull();
+    expect(body.cycle.blockNumber).toBe('12');
+    expect(body.cycle.gasUsed).toBe('21000');
+    expect(body.cycle.gasPrice).toBe('1000000000');
 
     expect(cycleUpdateMock).toHaveBeenCalledTimes(1);
     const updateArgs = cycleUpdateMock.mock.calls[0][0];
@@ -91,12 +103,18 @@ describe('PATCH /cycle/:id/status', () => {
     expect(updateArgs.data.operator).toBe(updatedRecord.operator);
     expect(updateArgs.data.cycleId).toBe(updatedRecord.cycleId);
     expect(updateArgs.data.metadata.manualUpdate.actor).toBe('TREASURY');
+    expect(updateArgs.data.blockNumber).toBe(12n);
+    expect(updateArgs.data.gasUsed).toBe(21000n);
+    expect(updateArgs.data.gasPrice).toBe(1_000_000_000n);
 
     expect(auditCreateMock).toHaveBeenCalledTimes(1);
     const auditArgs = auditCreateMock.mock.calls[0][0];
     expect(auditArgs.data.action).toBe('CYCLE_EXECUTE_MANUAL');
     expect(auditArgs.data.payload.status).toBe('EXECUTED');
     expect(auditArgs.data.payload.actor).toBe('TREASURY');
+    expect(auditArgs.data.payload.blockNumber).toBe('12');
+    expect(auditArgs.data.payload.gasUsed).toBe('21000');
+    expect(auditArgs.data.payload.gasPrice).toBe('1000000000');
 
     await app.close();
   });

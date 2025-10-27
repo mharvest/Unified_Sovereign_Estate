@@ -9,10 +9,11 @@
    ```
 4. Invoke the watcher to consume logs:
    ```bash
-   npx tsx scripts/run_cycle_watcher.ts
+   make cycle-watcher
+   # or npx tsx scripts/run_cycle_watcher.ts
    ```
-5. Check the output table for `cycles_updated`, cursor advance, and attestation counts.
-6. Inspect the latest attestation payload printed to confirm note metadata.
+5. Check the output table for `cycles_updated`, cursor advance, gas metrics, and attestation counts.
+6. Inspect the latest attestation payload printed to confirm note metadata and block/gas data.
 
 ## Useful Queries
 - `SELECT "status", "cycleId", "executedAt" FROM "Cycle" WHERE "id" = 'cmh9d9mkl00007ut7y8zzgjhg';`

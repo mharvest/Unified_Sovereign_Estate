@@ -90,6 +90,18 @@ const CycleStatusSchema = z.object({
     .regex(/^\d+$/, 'Note ID must be a base-10 integer string')
     .optional(),
   error: z.string().optional(),
+  blockNumber: z
+    .string()
+    .regex(/^\d+$/, 'blockNumber must be a base-10 integer string')
+    .optional(),
+  gasUsed: z
+    .string()
+    .regex(/^\d+$/, 'gasUsed must be a base-10 integer string')
+    .optional(),
+  gasPrice: z
+    .string()
+    .regex(/^\d+$/, 'gasPrice must be a base-10 integer string')
+    .optional(),
 });
 
 export default async function operationsRoutes(app: FastifyInstance) {
@@ -580,6 +592,9 @@ export default async function operationsRoutes(app: FastifyInstance) {
         txHash: input.txHash ?? cycle.txHash,
         operator: input.operator ?? cycle.operator,
         noteId: input.noteId ? BigInt(input.noteId) : cycle.noteId,
+        blockNumber: input.blockNumber ? BigInt(input.blockNumber) : cycle.blockNumber,
+        gasUsed: input.gasUsed ? BigInt(input.gasUsed) : cycle.gasUsed,
+        gasPrice: input.gasPrice ? BigInt(input.gasPrice) : cycle.gasPrice,
         metadata: {
           ...(cycle.metadata ?? {}),
           manualUpdate: {
@@ -607,6 +622,9 @@ export default async function operationsRoutes(app: FastifyInstance) {
             noteId: updated.noteId.toString(),
             operator: updated.operator,
             error: input.error ?? null,
+            blockNumber: updated.blockNumber?.toString() ?? null,
+            gasUsed: updated.gasUsed?.toString() ?? null,
+            gasPrice: updated.gasPrice?.toString() ?? null,
           },
         },
       });
@@ -625,6 +643,9 @@ export default async function operationsRoutes(app: FastifyInstance) {
         noteId: updated.noteId.toString(),
         executedAt: updated.executedAt?.toISOString() ?? null,
         failedAt: updated.failedAt?.toISOString() ?? null,
+        blockNumber: updated.blockNumber?.toString() ?? null,
+        gasUsed: updated.gasUsed?.toString() ?? null,
+        gasPrice: updated.gasPrice?.toString() ?? null,
       },
     });
   });

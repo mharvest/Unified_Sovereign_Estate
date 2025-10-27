@@ -94,6 +94,9 @@ model Cycle {
   armedAt    DateTime @default(now())
   executedAt DateTime?
   failedAt   DateTime?
+  blockNumber BigInt?
+  gasUsed     BigInt?
+  gasPrice    BigInt?
   metadata   Json?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

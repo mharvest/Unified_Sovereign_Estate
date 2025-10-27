@@ -65,7 +65,13 @@ export async function reconcileCycles({
   let successes = 0;
   for (const event of cycleEvents) {
     try {
-      const processed = await processCycleEvent(prismaClient, contracts, event, now);
+      const processed = await processCycleEvent(
+        prismaClient,
+        contracts,
+        event,
+        now,
+        publicClient,
+      );
       if (processed) {
         successes += 1;
       }
@@ -174,6 +180,7 @@ async function processCycleEvent(
   contracts: ContractsGateway | undefined,
   event: ParsedEvent,
   fallbackDate: Date,
+  publicClient?: PublicClient,
 ): Promise<boolean> {
   const payload = event.payload as Record<string, unknown>;
   const cycleHex = typeof payload.cycleId === 'string' ? payload.cycleId : null;
@@ -194,6 +201,22 @@ async function processCycleEvent(
   }
 
   let noteDetails: ReturnType<typeof serializeNote> | null = null;
+  let blockNumber: bigint | null =
+    event.blockNumber !== undefined && event.blockNumber !== null
+      ? BigInt(event.blockNumber)
+      : null;
+  let gasUsed: bigint | null = null;
+  let gasPrice: bigint | null = null;
+  if (publicClient && event.txHash) {
+    try {
+      const receipt = await publicClient.getTransactionReceipt({ hash: event.txHash as Hex });
+      blockNumber = receipt.blockNumber;
+      gasUsed = receipt.gasUsed;
+      gasPrice = receipt.effectiveGasPrice ?? null;
+    } catch (error) {
+      // ignore receipt errors
+    }
+  }
   if (contracts && noteId !== null) {
     try {
       const note = await contracts.getNote(noteId);
@@ -212,6 +235,9 @@ async function processCycleEvent(
       operator: operator ?? match.operator,
       executedAt,
       failedAt: null,
+      blockNumber,
+      gasUsed,
+      gasPrice,
       metadata: mergeMetadata(match.metadata, {
         onChainUpdate: {
           txHash: event.txHash,
@@ -236,6 +262,8 @@ async function processCycleEvent(
         txHash: updated.txHash,
         operator: updated.operator,
         blockNumber: event.blockNumber ?? null,
+        gasUsed: gasUsed ? gasUsed.toString() : null,
+        gasPrice: gasPrice ? gasPrice.toString() : null,
       },
     },
   });
@@ -253,6 +281,9 @@ async function processCycleEvent(
         tenorDays: tenorDays ?? updated.tenorDays,
         rateBps: rateBps ?? updated.rateBps,
         operator: updated.operator,
+        blockNumber: blockNumber ? blockNumber.toString() : null,
+        gasUsed: gasUsed ? gasUsed.toString() : null,
+        gasPrice: gasPrice ? gasPrice.toString() : null,
         note: noteDetails,
       },
     },
