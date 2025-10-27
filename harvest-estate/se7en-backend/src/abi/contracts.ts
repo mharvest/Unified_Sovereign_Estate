@@ -369,14 +369,10 @@ export const HRVSTABI = [
 export const KiiantuCyclesABI = [
   {
     type: 'event',
-    name: 'CycleExecuted',
+    name: 'CycleRun',
     inputs: [
       { name: 'cycleId', type: 'bytes32', indexed: true },
-      { name: 'noteId', type: 'uint256', indexed: true },
-      { name: 'tenorDays', type: 'uint16' },
-      { name: 'rateBps', type: 'uint16' },
-      { name: 'timestamp', type: 'uint256' },
-      { name: 'operator', type: 'address', indexed: true }
+      { name: 'noteId', type: 'uint256', indexed: true }
     ]
   },
   {

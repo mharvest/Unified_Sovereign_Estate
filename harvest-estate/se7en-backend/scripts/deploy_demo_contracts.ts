@@ -352,6 +352,7 @@ async function deployContract(
     abi: artifact.abi as any,
     bytecode: artifact.bytecode,
     args: [],
+    gas: 12_000_000n,
   });
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
   if (!receipt.contractAddress) {
@@ -409,7 +410,7 @@ async function main() {
     ['EKLESIA_ADDRESS', 'EklesiaAttestorDemo'],
     ['VAULTQUANT_ADDRESS', 'VaultQuantDemo'],
     ['MATRIARCH_ADDRESS', 'MatriarchInsuranceDemo'],
-    ['KIANITU_ADDRESS', 'KiiantuCyclesDemo'],
+    ['KIIANTU_ADDRESS', 'KiiantuCyclesDemo'],
     ['ANIMA_ADDRESS', 'AnimaDemo'],
     ['HRVST_ADDRESS', 'HRVSTDemo'],
   ];

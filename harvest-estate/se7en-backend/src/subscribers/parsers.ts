@@ -21,10 +21,30 @@ export interface ParsedEvent {
 }
 
 type ModuleKey = keyof typeof clients;
+type ModuleAlias =
+  | 'eklesia'
+  | 'eyeion'
+  | 'safevault'
+  | 'vaultquant'
+  | 'matriarch'
+  | 'hrvst'
+  | 'kiiantu'
+  | 'anima';
 type EventArgs = Record<string, unknown> & { [index: number]: unknown };
 type ChainLog = Awaited<ReturnType<PublicClient['getLogs']>>[number];
 
-const MODULE_EVENTS: Partial<Record<ModuleKey, readonly AbiEvent[]>> = {
+const MODULE_ALIAS_MAP: Record<ModuleKey, ModuleAlias> = {
+  eklesia: 'eklesia',
+  affidavitRegistry: 'eyeion',
+  safeVault: 'safevault',
+  vaultQuant: 'vaultquant',
+  matriarch: 'matriarch',
+  hrvst: 'hrvst',
+  kiiantu: 'kiiantu',
+  anima: 'anima',
+};
+
+const MODULE_EVENTS: Record<ModuleAlias, readonly AbiEvent[]> = {
   eklesia: extractEvents(EklesiaAttestorABI),
   eyeion: extractEvents(AffidavitRegistryABI),
   safevault: extractEvents(SafeVaultABI),
@@ -32,6 +52,7 @@ const MODULE_EVENTS: Partial<Record<ModuleKey, readonly AbiEvent[]>> = {
   matriarch: extractEvents(MatriarchInsuranceABI),
   kiiantu: extractEvents(KiiantuCyclesABI),
   hrvst: extractEvents(HRVSTABI),
+  anima: [],
 };
 
 const EVENT_BUILDERS: Record<string, (args: EventArgs, log: ChainLog) => ParsedEvent | null> = {
@@ -115,14 +136,10 @@ const EVENT_BUILDERS: Record<string, (args: EventArgs, log: ChainLog) => ParsedE
       timestamp: numericString(args, 'timestamp'),
     }),
 
-  'kiiantu:CycleExecuted': (args, log) =>
-    buildEvent('kiiantu', 'CycleExecuted', log, stringValue(args, 'cycleId'), {
+  'kiiantu:CycleRun': (args, log) =>
+    buildEvent('kiiantu', 'CycleRun', log, stringValue(args, 'cycleId'), {
       cycleId: stringValue(args, 'cycleId'),
       noteId: numericString(args, 'noteId'),
-      tenorDays: numericString(args, 'tenorDays'),
-      rateBps: numericString(args, 'rateBps'),
-      timestamp: numericString(args, 'timestamp'),
-      operator: stringValue(args, 'operator'),
     }),
 
   'hrvst:MintByNAV': (args, log) =>
@@ -174,7 +191,7 @@ export async function parseLogs(
   return events;
 }
 
-function decodeModuleEvent(module: ModuleKey, abiEvents: readonly AbiEvent[], log: ChainLog): ParsedEvent | null {
+function decodeModuleEvent(module: ModuleAlias, abiEvents: readonly AbiEvent[], log: ChainLog): ParsedEvent | null {
   for (const abiEvent of abiEvents) {
     try {
       const decoded = decodeEventLog({
@@ -197,11 +214,12 @@ function decodeModuleEvent(module: ModuleKey, abiEvents: readonly AbiEvent[], lo
   return null;
 }
 
-function buildModuleAddressMap(): Map<Hex, ModuleKey> {
-  const map = new Map<Hex, ModuleKey>();
+function buildModuleAddressMap(): Map<Hex, ModuleAlias> {
+  const map = new Map<Hex, ModuleAlias>();
   for (const [module, address] of Object.entries(clients) as Array<[ModuleKey, Hex | 'missing']>) {
     if (address === 'missing') continue;
-    map.set(address.toLowerCase() as Hex, module);
+    const alias = MODULE_ALIAS_MAP[module];
+    map.set(address.toLowerCase() as Hex, alias);
   }
   return map;
 }

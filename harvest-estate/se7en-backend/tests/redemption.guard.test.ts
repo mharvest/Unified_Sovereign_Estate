@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { quoteRedemption } from '../src/treasury/redemption.js';
+import { quoteRedemption } from '../src/treasury/redemption.ts';
 
 const nav = {
   navPerToken: 1.05,

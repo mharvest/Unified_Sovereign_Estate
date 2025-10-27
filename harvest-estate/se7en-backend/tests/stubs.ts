@@ -1,6 +1,5 @@
 import type { ContractsGateway, NoteRecord } from '../src/lib/contracts.js';
 import type { AuditEntry, AuditLogger, AuditLogRecord } from '../src/plugins/audit.js';
-import type { FiduciaryRole } from '@prisma/client';
 import { signJwt } from '../src/lib/jwt.js';
 import type { JwtClaims } from '../src/lib/jwt.js';
 import type { SignatureStore, EnvelopeRecordInput, EventRecordInput } from '../src/signing/store.js';
@@ -119,25 +118,20 @@ export class MemoryAuditLogger implements AuditLogger {
     this.records.push(entry);
   }
 
-  async findByAttestation(attestationId: string): Promise<AuditLogRecord | null> {
-    const found = this.records.find((record) => record.attestationId === attestationId);
-    if (!found) return null;
-    return {
-      id: this.records.indexOf(found) + 1,
-      action: found.action,
-      assetId: found.assetId,
-      attestationId: found.attestationId ?? null,
-      txHash: found.txHash ?? null,
-      payload: found.payload ?? null,
+  async history(limit = 50): Promise<AuditLogRecord[]> {
+    return this.records.slice(-limit).map((record, index) => ({
+      id: `mem-${index}`,
+      action: record.action,
+      assetId: record.assetId ?? 'system',
+      attestationId: record.attestationId ?? null,
+      txHash: record.txHash ?? null,
+      payload: record.payload ?? {},
       createdAt: new Date(),
-    };
+    }));
   }
 }
 
-export function createJwt(
-  role: FiduciaryRole | string,
-  claims: Partial<JwtClaims> = {},
-): string {
+export function createJwt(role: string, claims: Partial<JwtClaims> = {}): string {
   const payload: JwtClaims = {
     sub: 'test-user',
     email: 'test@harvest.estate',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeNav } from '../src/treasury/nav.js';
+import { computeNav } from '../src/treasury/nav.ts';
 
 describe('computeNav', () => {
   it('calculates nav, floor, and price with spread', () => {
@@ -14,7 +14,8 @@ describe('computeNav', () => {
     });
 
     expect(result.navPerToken).toBeCloseTo(0.77, 2);
-    expect(result.floor).toBeCloseTo(0.62, 2);
+    expect(result.floor).toBeCloseTo(0.616, 3);
+    expect(result.price).toBeCloseTo(0.6129, 4);
     expect(result.price).toBeLessThanOrEqual(result.floor);
   });
 

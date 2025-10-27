@@ -17,8 +17,8 @@ export interface ContractAddresses {
   safeVault: Hex;
   vaultQuant: Hex;
   matriarch: Hex;
-  hrvs: Hex;
-  kianitu: Hex;
+  hrvst: Hex;
+  kiiantu: Hex;
   anima: Hex;
 }
 
@@ -55,9 +55,9 @@ export interface ContractsGateway {
 
 export const clients: Record<keyof ContractAddresses, Hex | 'missing'> = {
   eklesia: 'missing',
-  safevault: 'missing',
-  eyeion: 'missing',
-  vaultquant: 'missing',
+  affidavitRegistry: 'missing',
+  safeVault: 'missing',
+  vaultQuant: 'missing',
   matriarch: 'missing',
   hrvst: 'missing',
   kiiantu: 'missing',
@@ -105,8 +105,8 @@ export function loadContractsConfigFromEnv(): ContractsConfig {
     safeVault: 'SAFEVAULT_ADDRESS',
     vaultQuant: 'VAULTQUANT_ADDRESS',
     matriarch: 'MATRIARCH_ADDRESS',
-    hrvs: 'HRVST_ADDRESS',
-    kianitu: 'KIANITU_ADDRESS',
+    hrvst: 'HRVST_ADDRESS',
+    kiiantu: 'KIIANTU_ADDRESS',
     anima: 'ANIMA_ADDRESS',
   };
 
@@ -154,12 +154,12 @@ export function createContractsGateway(config: ContractsConfig): ContractsGatewa
 
   // Update global client map for diagnostics
   clients.eklesia = config.addresses.eklesia;
-  clients.safevault = config.addresses.safeVault;
-  clients.eyeion = config.addresses.affidavitRegistry;
-  clients.vaultquant = config.addresses.vaultQuant;
+  clients.safeVault = config.addresses.safeVault;
+  clients.affidavitRegistry = config.addresses.affidavitRegistry;
+  clients.vaultQuant = config.addresses.vaultQuant;
   clients.matriarch = config.addresses.matriarch;
-  clients.hrvst = config.addresses.hrvs;
-  clients.kiiantu = config.addresses.kianitu;
+  clients.hrvst = config.addresses.hrvst;
+  clients.kiiantu = config.addresses.kiiantu;
   clients.anima = config.addresses.anima;
 
   const write = async <T = undefined>(params: {
@@ -381,7 +381,7 @@ export function createContractsGateway(config: ContractsConfig): ContractsGatewa
     async runCycle(noteId, tenorDays, rateBps) {
       const { hash, result } = await write<Hex>({
         abi: KiiantuCyclesABI,
-        address: config.addresses.kianitu,
+        address: config.addresses.kiiantu,
         functionName: 'runCycle',
         args: [noteId, BigInt(tenorDays), BigInt(rateBps)],
       });
@@ -400,7 +400,7 @@ export function createContractsGateway(config: ContractsConfig): ContractsGatewa
     async mintByNav(navCsdn, navSdn, floorBps, to) {
       const { hash, result } = await write<bigint>({
         abi: HRVSTABI,
-        address: config.addresses.hrvs,
+        address: config.addresses.hrvst,
         functionName: 'mintByNAV',
         args: [navCsdn, navSdn, floorBps, to],
       });
@@ -410,7 +410,7 @@ export function createContractsGateway(config: ContractsConfig): ContractsGatewa
     async burnFrom(holder, amount) {
       const { hash } = await write({
         abi: HRVSTABI,
-        address: config.addresses.hrvs,
+        address: config.addresses.hrvst,
         functionName: 'burnFrom',
         args: [holder, amount],
       });

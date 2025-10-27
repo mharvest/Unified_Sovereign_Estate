@@ -14,24 +14,33 @@
     "hash:docs": "node scripts/hash_documents.mjs",
     "migration:verify": "prisma migrate deploy --schema prisma/schema.prisma && prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script",
     "attest:json": "node src/cli/attestationReportJson.js",
-    "jwt:create": "tsx scripts/create_jwt.ts"
+    "jwt:create": "tsx scripts/create_jwt.ts",
+    "db:migrate": "prisma migrate deploy --schema prisma/schema.prisma",
+    "seed:alpha": "tsx scripts/seed_alpha.ts",
+    "seed:beta": "tsx scripts/seed_beta.ts",
+    "demo:beta": "tsx scripts/demo_beta.ts",
+    "report:daily": "tsx scripts/report_daily.ts",
+    "attest:bundle": "tsx scripts/attest_bundle.ts"
   },
   "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
     "@fastify/cors": "^9.0.1",
     "@prisma/client": "^5.14.0",
+    "@solana/web3.js": "^1.94.0",
     "dotenv": "^16.4.5",
     "fastify": "^4.28.1",
     "fastify-plugin": "^4.5.1",
     "pino": "^9.0.0",
+    "tweetnacl": "^1.0.3",
     "viem": "^2.9.16",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20.12.7",
     "prisma": "^5.14.0",
-    "solc": "^0.8.30",
+    "solc": "^0.8.23",
     "tsx": "^4.7.1",
     "typescript": "^5.4.5",
-    "vitest": "^1.4.0"
+    "vitest": "^4.0.3"
   }
 }

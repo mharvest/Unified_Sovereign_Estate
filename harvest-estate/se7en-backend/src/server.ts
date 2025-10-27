@@ -3,24 +3,15 @@ import cors from '@fastify/cors';
 import contractsPlugin from './plugins/contracts.js';
 import auditPlugin, { type AuditLogger } from './plugins/audit.js';
 import authPlugin from './plugins/auth.js';
-import signingPlugin from './plugins/signing.js';
-import vaultPlugin from './plugins/vault.js';
-import navRoutes from './routes/nav.js';
-import redemptionRoutes from './routes/redemption.js';
-import ledgerRoutes from './routes/ledger.js';
-import intakeRoutes from './routes/intake.js';
-import mintRoutes from './routes/mint.js';
-import insuranceRoutes from './routes/insurance.js';
-import circulateRoutes from './routes/circulate.js';
-import redeemRoutes from './routes/redeem-orchestrator.js';
-import verifyRoutes from './routes/verify.js';
-import signRoutes from './routes/sign.js';
-import vaultRoutes from './routes/vault.js';
+import guardPlugin from './plugins/guard.js';
+import vaultPlugin, { type VaultPluginOptions } from './plugins/vault.js';
+import signingPlugin, { type SigningPluginOptions } from './plugins/signing.js';
 import type { ContractsGateway } from './lib/contracts.js';
 import { markClientsConfiguredForTests } from './lib/addressGuard.js';
-import type { SignatureStore } from './signing/store.js';
-import type { SigningProvider } from './signing/provider.js';
-import type { VaultPluginOptions } from './plugins/vault.js';
+import operationsRoutes from './routes/operations.js';
+import systemRoutes from './routes/system.js';
+import signRoutes from './routes/sign.js';
+import ledgerRoutes from './routes/ledger.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -31,9 +22,9 @@ declare module 'fastify' {
 export interface BuildAppOptions {
   contracts?: ContractsGateway;
   audit?: AuditLogger;
-  signatureStore?: SignatureStore;
-  signingProvider?: SigningProvider;
   vaultOptions?: VaultPluginOptions;
+  signatureStore?: SigningPluginOptions['store'];
+  signingProvider?: SigningPluginOptions['provider'];
 }
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -78,19 +69,13 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     store: options.signatureStore,
     provider: options.signingProvider,
   });
-  app.register(vaultPlugin, options.vaultOptions);
+  app.register(vaultPlugin, options.vaultOptions ?? {});
+  app.register(guardPlugin);
 
-  app.register(navRoutes);
-  app.register(redemptionRoutes);
-  app.register(ledgerRoutes);
-  app.register(intakeRoutes);
-  app.register(mintRoutes);
-  app.register(insuranceRoutes);
-  app.register(circulateRoutes);
-  app.register(redeemRoutes);
-  app.register(verifyRoutes);
+  app.register(systemRoutes);
+  app.register(operationsRoutes);
   app.register(signRoutes);
-  app.register(vaultRoutes);
+  app.register(ledgerRoutes);
 
   return app;
 }

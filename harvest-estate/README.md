@@ -64,6 +64,19 @@ cp frontend/.env.example frontend/.env
 # assign generated values to SE7EN_DEMO_JWT / NEXT_PUBLIC_SE7EN_JWT as needed
 ```
 
+### JWT Auth Configuration
+- `se7en-backend` now blocks intake, issuance, insurance, peg, cycle, redeem, and verify routes unless a valid Bearer token is supplied.
+- Set `JWT_SECRET` in every environment and optionally `JWT_ISSUER` / `JWT_AUDIENCE` (comma-separated) if you need to pin expected claims.
+- Issue operator tokens with `npm run jwt:create -- --role TREASURY` (swap the role for LAW, OPS, INSURANCE, GOVERNANCE, AUDITOR as needed) and store them in `.env.demo`, `.env.live`, or your secret manager.
+- Clients must forward `Authorization: Bearer <token>`; for example, `/cycle/arm` accepts `TREASURY` or `OPS`, while custody intake allows `LAW` or `OPS`.
+- When the secret is missing the service responds with `{ ok: false, error: "auth_disabled" }`, so wire this into deployment smoke checks.
+
+### Signing & Ledger Updates
+- `/sign/envelope` and `/sign/webhook` are live again; set `SIGN_ENABLED=true` and provide your provider/store (defaults stay stub) to exercise the flow.
+- `/ledger/export` now streams CSV directly from audit logs—requires JWT roles `LAW`, `GOVERNANCE`, or `AUDITOR`.
+- `/vault/upload` remains guarded (`LAW`/`OPS`) and needs `SAFEVAULT_UPLOADS_ENABLED=true` plus storage/SMTP settings before toggling.
+- Container deployments should surface `NEEDED_EVIDENCE_PATH` (compose defaults it to `/app/docs/needed-evidence.md`) so the guard plugin can update evidence status inside the container volume.
+
 ### Launch in Demo Mode
 ```bash
 make demo
@@ -102,7 +115,36 @@ curl -X POST http://localhost:5050/mint \
   -d '{"externalId":"HAS-ALPHA","quantity":380038.75,"navPerToken":0.91,"policyFloor":0.85}'
 ```
 
-> **Env prerequisites**: the orchestrator expects `HARDHAT_RPC`, `ORCHESTRATOR_PRIVATE_KEY`, and contract addresses (`EKLESIA_ADDRESS`, `SAFEVAULT_ADDRESS`, `EYEION_ADDRESS`, `VAULTQUANT_ADDRESS`, `MATRIARCH_ADDRESS`, `HRVST_ADDRESS`, `KIANITU_ADDRESS`, `ANIMA_ADDRESS`) to be present before boot.
+> **Env prerequisites**: the orchestrator expects `HARDHAT_RPC`, `ORCHESTRATOR_PRIVATE_KEY`, and contract addresses (`EKLESIA_ADDRESS`, `SAFEVAULT_ADDRESS`, `EYEION_ADDRESS`, `VAULTQUANT_ADDRESS`, `MATRIARCH_ADDRESS`, `HRVST_ADDRESS`, `KIIANTU_ADDRESS`, `ANIMA_ADDRESS`) to be present before boot.
+
+### Cycle Watcher Automation
+
+#### Cron
+```bash
+chmod +x scripts/run_cycle_watcher_cron.sh
+crontab -e  # add: * * * * * /path/to/repo/scripts/run_cycle_watcher_cron.sh
+```
+
+Logs land in `var/logs/cycle_watcher.log`. Adjust the schedule as needed.
+
+#### PM2 Worker
+```bash
+npm install -g pm2
+pm2 start scripts/cycle_watcher_worker.ts --name cycle-watcher --interpreter npx --interpreter-args "tsx"
+pm2 save
+```
+
+Use `pm2 status cycle-watcher` to confirm it is running and `pm2 logs cycle-watcher` for output.
+
+Health probes:
+- `scripts/monitor_cycle_watcher.sh 3600` runs both the log heartbeat and PM2 status checks (default tolerance 1 hour).
+- `scripts/check_cycle_watcher_logs.sh` and `scripts/check_cycle_watcher_pm2.sh` remain available for targeted checks.
+
+### Reporting
+
+- `make ledger-export` writes the latest ledger to `ledger.csv` via `GET /api/ledger/export`.
+- `make attest-json OUTPUT=reports/attest.json FILES="docs/needed-evidence.md"` emits the attestation JSON report (wraps `npm run attest:json`).
+- You can also call `npm run attest:json -- --output out.json --files docs/a.md,docs/b.pdf` directly.
 
 ### Demo Seed Flow
 

@@ -1,0 +1,39 @@
+{
+  "version": "2025-10-25",
+  "source": "Matriarch Insurance Underwriting Desk",
+  "classes": [
+    {
+      "code": "CSDN-A",
+      "description": "Prime collateralized sovereign debt note",
+      "multiplier": 3.5,
+      "floorBps": 8500,
+      "classCode": 1
+    },
+    {
+      "code": "CSDN-B",
+      "description": "Seasoned sovereign debt note",
+      "multiplier": 2.8,
+      "floorBps": 8000,
+      "classCode": 2
+    },
+    {
+      "code": "SDN-A",
+      "description": "Secured digital note backed by insured real property",
+      "multiplier": 2.1,
+      "floorBps": 7200,
+      "classCode": 3
+    },
+    {
+      "code": "SDN-B",
+      "description": "Stabilized digital note with partial collateral",
+      "multiplier": 1.6,
+      "floorBps": 6700,
+      "classCode": 4
+    }
+  ],
+  "disclosure": {
+    "jurisdiction": "UHMI 508(c)(1)(a)",
+    "actuary": "Matriarch Risk Collective",
+    "effectiveDate": "2025-10-01"
+  }
+}

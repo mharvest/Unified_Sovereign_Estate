@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-arm64-openssl-3.0.x"]
 }
 
@@ -8,120 +8,107 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model TreasuryState {
-  id                 Int      @id @default(autoincrement())
-  stableUsd          Decimal  @default(0)
-  insuredReservesUsd Decimal  @default(0)
-  realizedYieldUsd   Decimal  @default(0)
-  liabilitiesUsd     Decimal  @default(0)
-  createdAt          DateTime @default(now())
-}
-
-model TokenSupply {
-  symbol      String  @id
-  circulating Decimal
-  createdAt   DateTime @default(now())
-}
-
-model RedemptionTicket {
-  id            Int      @id @default(autoincrement())
-  holderId      String
-  tokens        Decimal
-  usdPaid       Decimal
-  pricePerToken Decimal
-  createdAt     DateTime @default(now())
-}
-
-model Asset {
-  id            Int              @id @default(autoincrement())
-  externalId    String           @unique
-  name          String
-  assetType     AssetType
-  jurisdiction  String
-  valuationUsd  Decimal          @default(0)
-  status        AssetStatus      @default(INTAKE)
-  intakeAt      DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  issuances     Issuance[]
-  insurance     InsuranceBand[]
-  affidavits    Affidavit[]
-  transactions  Transaction[]
-}
-
-model Issuance {
-  id            Int        @id @default(autoincrement())
-  asset         Asset      @relation(fields: [assetId], references: [id])
-  assetId       Int
-  tokenSymbol   String
-  quantity      Decimal    @default(0)
-  navPerToken   Decimal    @default(0)
-  policyFloor   Decimal    @default(0)
-  txHash        String?
-  issuedAt      DateTime   @default(now())
-  createdAt     DateTime   @default(now())
-  transactions  Transaction[]
-
-  @@unique([assetId, tokenSymbol])
-}
-
-model InsuranceBand {
-  id           Int        @id @default(autoincrement())
-  asset        Asset      @relation(fields: [assetId], references: [id])
-  assetId      Int
-  provider     String
-  multiplier   Decimal    @default(0)
-  coverageUsd  Decimal    @default(0)
-  policyJson   String
-  effectiveAt  DateTime   @default(now())
-  createdAt    DateTime   @default(now())
-
-  @@unique([assetId, provider])
-}
-
-model Transaction {
-  id          Int              @id @default(autoincrement())
-  asset       Asset?           @relation(fields: [assetId], references: [id])
-  assetId     Int?
-  issuance    Issuance?        @relation(fields: [issuanceId], references: [id])
-  issuanceId  Int?
-  type        TransactionType
-  amountUsd   Decimal          @default(0)
-  metadata    Json?
-  occurredAt  DateTime         @default(now())
-  createdAt   DateTime         @default(now())
+model AttestationEvent {
+  id        String   @id @default(cuid())
+  network   String
+  program   String
+  eventType String
+  txHash    String
+  blockTime DateTime
+  payload   Json
+  createdAt DateTime @default(now())
 }
 
 model Affidavit {
-  id             Int       @id @default(autoincrement())
-  asset          Asset     @relation(fields: [assetId], references: [id])
-  assetId        Int
-  hash           String    @unique
-  jurisdiction   String
-  clauseRef      String
-  issuedBy       String
-  createdAt      DateTime  @default(now())
+  id           String   @id @default(cuid())
+  docType      String
+  eyeionHash   String
+  eklesiaHash  String
+  safeVaultCid String
+  issuer       String
+  createdAt    DateTime @default(now())
 }
 
-model User {
-  id          Int           @id @default(autoincrement())
-  email       String        @unique
-  displayName String
-  role        FiduciaryRole
-  status      UserStatus    @default(ACTIVE)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  ledgerLogs  LedgerLog[]
+model CustodyRecord {
+  id           String   @id @default(cuid())
+  assetId      String
+  sha256       String   @unique
+  cid          String?
+  registeredAt DateTime?
+  status       String   @default("pending")
+  createdAt    DateTime @default(now())
 }
 
-model LedgerLog {
-  id          Int        @id @default(autoincrement())
-  scope       String
-  level       LogLevel   @default(INFO)
-  message     String
-  metadata    Json?
-  createdAt   DateTime   @default(now())
-  user        User?      @relation(fields: [userId], references: [id])
-  userId      Int?
+model CustodyDoc {
+  id        String   @id @default(dbgenerated("gen_random_uuid()"))
+  assetId   String
+  name      String
+  sha256    String   @unique
+  status    String   @default("PENDING_SIGNATURE")
+  createdAt DateTime @default(now())
+}
+
+model Issuance {
+  id           String   @id @default(cuid())
+  class        String
+  underlyingId String
+  notionalUSD  Decimal
+  hrvstMinted  Decimal
+  eklesiaHash  String?
+  affidavitId  String?
+  createdAt    DateTime   @default(now())
+  pegMints     PegMint[]
+}
+
+model InsuranceBind {
+  id            String   @id @default(cuid())
+  assetId       String
+  issuanceId    String?
+  multiplierX   Decimal
+  matriarchHash String?
+  coverageClass String
+  factorBps     Decimal
+  createdAt     DateTime @default(now())
+}
+
+model PegMint {
+  id          String   @id @default(cuid())
+  issuanceId  String
+  issuance    Issuance @relation(fields: [issuanceId], references: [id])
+  hrvstAmount Decimal
+  navAtMint   Decimal
+  oracleSig   String
+  createdAt   DateTime @default(now())
+}
+
+model Cycle {
+  id         String   @id @default(cuid())
+  program    String   @default("kiiantu")
+  status     String   @default("ARMED")
+  noteId     BigInt
+  cycleId    String?  @unique
+  tenorDays  Int
+  rateBps    Int
+  operator   String?
+  txHash     String?
+  armedAt    DateTime @default(now())
+  executedAt DateTime?
+  failedAt   DateTime?
+  blockNumber BigInt?
+  gasUsed     BigInt?
+  gasPrice    BigInt?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Override {
+  id        String   @id @default(cuid())
+  actor     String
+  reason    String
+  action    String
+  target    String
+  createdAt DateTime @default(now())
 }
 
 model AuditLog {
@@ -134,31 +121,10 @@ model AuditLog {
   createdAt     DateTime @default(now())
 }
 
-model AttestationEvent {
-  id          String   @id @default(cuid())
-  eventUid    String   @unique
-  module      String
-  kind        String
-  juraHash    String
-  txHash      String?
-  blockNumber Int?
-  payload     Json
-  createdAt   DateTime @default(now())
-}
-
-model CustodyDoc {
-  id        String   @id @default(cuid())
-  assetId   String
-  name      String
-  sha256    String   @unique
-  status    String   @default("PENDING_SIGNATURE")
-  createdAt DateTime @default(now())
-}
-
 model SubscriberCursor {
   id        String   @id @default(cuid())
   name      String   @unique
-  lastBlock Int      @default(0)
+  lastBlock BigInt   @default(0)
   updatedAt DateTime @updatedAt
 }
 
@@ -173,58 +139,33 @@ model SignatureEnvelope {
   signerEmail String?
   signedAt    DateTime?
   createdAt   DateTime @default(now())
+  events      SignatureEvent[]
 }
 
 model SignatureEvent {
-  id            String   @id @default(cuid())
+  id            String            @id @default(cuid())
   envelopeId    String
   providerEvent String
   eventType     String
   signer        String
   occurredAt    DateTime
   rawPayload    Json
+  envelope      SignatureEnvelope @relation(fields: [envelopeId], references: [envelopeId])
 }
 
-enum AssetType {
-  CSDN
-  SDN
+model RequiredInput {
+  key       String   @id
+  value     String?
+  category  String
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
 }
 
-enum AssetStatus {
-  INTAKE
-  VERIFIED
-  INSURED
-  ISSUED
-  CIRCULATING
-  REDEEMED
-}
-
-enum TransactionType {
-  INTAKE
-  MINT
-  INSURANCE_PREMIUM
-  NAV_UPDATE
-  REDEMPTION
-  CIRCULATION
-}
-
-enum FiduciaryRole {
-  LAW
-  CPA
-  TREASURY
-  INSURANCE
-  OPS
-  GOVERNANCE
-  ORACLE
-}
-
-enum UserStatus {
-  ACTIVE
-  INACTIVE
-}
-
-enum LogLevel {
-  INFO
-  WARN
-  ERROR
+model EvidenceTask {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  label     String
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

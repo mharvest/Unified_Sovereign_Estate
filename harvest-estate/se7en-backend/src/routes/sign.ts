@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import type { FiduciaryRole } from '@prisma/client';
 import { z } from 'zod';
 import { createHash } from 'node:crypto';
+import type { FiduciaryRole } from '../plugins/auth.js';
 
 const RecipientSchema = z.object({
   name: z.string().min(1),
@@ -70,6 +70,7 @@ export default async function signRoutes(app: FastifyInstance) {
       });
 
       return reply.code(201).send({
+        ok: true,
         envelopeId: result.envelopeId,
         status: result.status,
       });
