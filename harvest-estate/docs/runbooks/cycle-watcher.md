@@ -15,6 +15,17 @@
 5. Check the output table for `cycles_updated`, cursor advance, gas metrics, and attestation counts.
 6. Inspect the latest attestation payload printed to confirm note metadata and block/gas data.
 
+## Cron Setup
+1. Make the cron helper executable:
+   ```bash
+   chmod +x scripts/run_cycle_watcher_cron.sh
+   ```
+2. Add an entry to your crontab (example runs every minute):
+   ```bash
+   * * * * * /path/to/repo/scripts/run_cycle_watcher_cron.sh
+   ```
+3. Logs are appended to `var/logs/cycle_watcher.log`.
+
 ## Useful Queries
 - `SELECT "status", "cycleId", "executedAt" FROM "Cycle" WHERE "id" = 'cmh9d9mkl00007ut7y8zzgjhg';`
 - `SELECT "eventType", "payload" FROM "AttestationEvent" WHERE "eventType" = 'CycleExecutedAuto' ORDER BY "createdAt" DESC LIMIT 1;`
