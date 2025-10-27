@@ -1,84 +1,148 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { reconcileCycles } from '../src/subscribers/cycleWatcher.js';
+import * as parsers from '../src/subscribers/parsers.js';
 
 describe('reconcileCycles', () => {
-  it('marks armed cycles as executed, creates audit and attestation rows', async () => {
-    const cycles = [
-      {
-        id: 'cycle-1',
-        status: 'ARMED',
-        noteId: 1n,
-        cycleId: '0x' + 'a'.repeat(64),
-        tenorDays: 30,
-        rateBps: 250,
-        operator: '0x' + '1'.repeat(40),
-        txHash: '0x' + 'b'.repeat(64),
-        metadata: { previous: true },
-        executedAt: null,
-        failedAt: null,
-      },
-    ];
+  const parseLogsMock = vi.spyOn(parsers, 'parseLogs');
 
-    const updates: any[] = [];
-    const auditRecords: any[] = [];
-    const attestationRecords: any[] = [];
+  beforeEach(() => {
+    vi.clearAllMocks();
+    parseLogsMock.mockReset();
+  });
 
+  it('applies on-chain cycle execution events and records metadata', async () => {
+    const cursorState: { lastBlock: bigint } = { lastBlock: 0n };
     const prismaStub = {
       cycle: {
-        findMany: vi.fn().mockResolvedValue(cycles),
-        update: vi.fn().mockImplementation((input: any) => {
-          updates.push(input);
-          return {
-            ...cycles[0],
-            ...input.data,
-          };
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'cycle-1',
+          status: 'ARMED',
+          noteId: 1n,
+          cycleId: null,
+          tenorDays: 30,
+          rateBps: 200,
+          operator: null,
+          txHash: null,
+          metadata: {},
         }),
+        update: vi.fn().mockImplementation(({ data }: any) => ({
+          id: 'cycle-1',
+          status: data.status,
+          noteId: 1n,
+          cycleId: data.cycleId,
+          tenorDays: 30,
+          rateBps: 200,
+          operator: data.operator,
+          txHash: data.txHash,
+          metadata: data.metadata,
+        })),
       },
       auditLog: {
-        create: vi.fn().mockImplementation((input: any) => {
-          auditRecords.push(input);
-          return input;
-        }),
+        create: vi.fn().mockResolvedValue(undefined),
       },
       attestationEvent: {
-        create: vi.fn().mockImplementation((input: any) => {
-          attestationRecords.push(input);
-          return input;
+        create: vi.fn().mockResolvedValue(undefined),
+      },
+      subscriberCursor: {
+        findUnique: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockImplementation(() => {
+          cursorState.lastBlock = 0n;
+          return { name: 'cycle_watcher', lastBlock: cursorState.lastBlock };
+        }),
+        upsert: vi.fn().mockImplementation(({ update, create }: any) => {
+          cursorState.lastBlock = update?.lastBlock ?? create.lastBlock;
+          return { name: 'cycle_watcher', lastBlock: cursorState.lastBlock };
         }),
       },
     } as any;
 
+    const publicClientStub = {
+      getBlockNumber: vi.fn().mockResolvedValue(12n),
+    };
+
+    const contractsStub = {
+      getNote: vi.fn().mockResolvedValue({
+        assetId: '0xasset',
+        instrumentType: 1n,
+        par: 1_000n,
+        nav: 1_050n,
+        affidavitId: '0xaff',
+        attestationId: '0xatt',
+        active: true,
+      }),
+    };
+
+    parseLogsMock.mockResolvedValue([
+      {
+        eventUid: '0xabc:0',
+        module: 'kiiantu',
+        kind: 'CycleExecuted',
+        juraHash: '0xhash',
+        txHash: '0x' + '1'.repeat(64),
+        blockNumber: 12,
+        payload: {
+          cycleId: '0x' + 'c'.repeat(64),
+          noteId: '1',
+          tenorDays: '30',
+          rateBps: '250',
+          timestamp: String(Math.floor(Date.UTC(2025, 9, 27, 18, 0, 0) / 1000)),
+          operator: '0x' + '2'.repeat(40),
+        },
+      },
+    ]);
+
     const result = await reconcileCycles({
       prismaClient: prismaStub,
+      publicClient: publicClientStub as any,
+      contracts: contractsStub as any,
+      kiiantuAddress: ('0x' + 'a'.repeat(40)) as `0x${string}`,
       now: new Date('2025-10-27T18:00:00.000Z'),
     });
 
     expect(result).toBe(1);
-    expect(prismaStub.cycle.findMany).toHaveBeenCalledTimes(1);
+    expect(publicClientStub.getBlockNumber).toHaveBeenCalledTimes(1);
+    expect(parseLogsMock).toHaveBeenCalledWith(publicClientStub, 1n, 12n, [expect.any(String)]);
+    expect(prismaStub.cycle.findFirst).toHaveBeenCalledTimes(1);
     expect(prismaStub.cycle.update).toHaveBeenCalledTimes(1);
-    expect(updates[0].where.id).toBe('cycle-1');
-    expect(updates[0].data.status).toBe('EXECUTED');
-    expect(updates[0].data.executedAt).toEqual(new Date('2025-10-27T18:00:00.000Z'));
-    expect(updates[0].data.metadata.autoUpdate.at).toBe('2025-10-27T18:00:00.000Z');
+    expect(prismaStub.cycle.update.mock.calls[0][0].data.status).toBe('EXECUTED');
+    expect(prismaStub.cycle.update.mock.calls[0][0].data.metadata.onChainUpdate.txHash).toMatch(/^0x/);
 
-    expect(auditRecords).toHaveLength(1);
-    expect(auditRecords[0].data.action).toBe('CYCLE_EXECUTE_AUTO');
-    expect(auditRecords[0].data.payload.cycleId).toBe('cycle-1');
+    expect(prismaStub.auditLog.create).toHaveBeenCalledTimes(1);
+    expect(prismaStub.auditLog.create.mock.calls[0][0].data.payload.status).toBe('EXECUTED');
 
-    expect(attestationRecords).toHaveLength(1);
-    expect(attestationRecords[0].data.eventType).toBe('CycleExecutedAuto');
-    expect(attestationRecords[0].data.payload.cycleId).toBe(cycles[0].cycleId);
+    expect(prismaStub.attestationEvent.create).toHaveBeenCalledTimes(1);
+    const attestationPayload = prismaStub.attestationEvent.create.mock.calls[0][0].data.payload;
+    expect(attestationPayload.note).toMatchObject({
+      assetId: '0xasset',
+      instrumentType: '1',
+      par: '1000',
+      nav: '1050',
+    });
+
+    expect(cursorState.lastBlock).toBe(12n);
   });
 
-  it('returns zero when no cycles pending', async () => {
+  it('updates cursor even when no events are found', async () => {
     const prismaStub = {
-      cycle: {
-        findMany: vi.fn().mockResolvedValue([]),
+      subscriberCursor: {
+        findUnique: vi.fn().mockResolvedValue({ name: 'cycle_watcher', lastBlock: 5n }),
+        upsert: vi.fn().mockResolvedValue(undefined),
       },
     } as any;
 
-    const result = await reconcileCycles({ prismaClient: prismaStub });
+    const publicClientStub = {
+      getBlockNumber: vi.fn().mockResolvedValue(6n),
+    };
+
+    parseLogsMock.mockResolvedValue([]);
+
+    const result = await reconcileCycles({
+      prismaClient: prismaStub,
+      publicClient: publicClientStub as any,
+      kiiantuAddress: ('0x' + 'a'.repeat(40)) as `0x${string}`,
+    });
+
     expect(result).toBe(0);
-    expect(prismaStub.cycle.findMany).toHaveBeenCalledTimes(1);
+    expect(prismaStub.subscriberCursor.upsert).toHaveBeenCalledTimes(1);
   });
 });

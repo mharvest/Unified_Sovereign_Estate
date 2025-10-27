@@ -4,7 +4,7 @@ import { startCycleWatcher, type SubscriberController } from './cycleWatcher.js'
 export async function startSubscribers(app: FastifyInstance): Promise<SubscriberController | undefined> {
   const controllers: SubscriberController[] = [];
 
-  const cycleWatcher = startCycleWatcher(app);
+  const cycleWatcher = startCycleWatcher(app, { contracts: (app as any).contracts });
   if (cycleWatcher) {
     controllers.push(cycleWatcher);
   } else {
