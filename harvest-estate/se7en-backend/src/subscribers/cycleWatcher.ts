@@ -57,7 +57,10 @@ export async function reconcileCycles({
   const toBlock = latestBlock;
 
   const events = await parseLogs(publicClient, fromBlock, toBlock, [kiiantuAddress]);
-  const cycleEvents = events.filter((event) => event.module === 'kiiantu' && event.kind === 'CycleExecuted');
+  const cycleEvents = events.filter(
+    (event) =>
+      event.module === 'kiiantu' && ['CycleExecuted', 'CycleRun'].includes(event.kind),
+  );
 
   let successes = 0;
   for (const event of cycleEvents) {

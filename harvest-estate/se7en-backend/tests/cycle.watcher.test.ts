@@ -76,17 +76,13 @@ describe('reconcileCycles', () => {
       {
         eventUid: '0xabc:0',
         module: 'kiiantu',
-        kind: 'CycleExecuted',
+        kind: 'CycleRun',
         juraHash: '0xhash',
         txHash: '0x' + '1'.repeat(64),
         blockNumber: 12,
         payload: {
           cycleId: '0x' + 'c'.repeat(64),
           noteId: '1',
-          tenorDays: '30',
-          rateBps: '250',
-          timestamp: String(Math.floor(Date.UTC(2025, 9, 27, 18, 0, 0) / 1000)),
-          operator: '0x' + '2'.repeat(40),
         },
       },
     ]);

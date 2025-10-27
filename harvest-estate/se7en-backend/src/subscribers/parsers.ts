@@ -115,14 +115,10 @@ const EVENT_BUILDERS: Record<string, (args: EventArgs, log: ChainLog) => ParsedE
       timestamp: numericString(args, 'timestamp'),
     }),
 
-  'kiiantu:CycleExecuted': (args, log) =>
-    buildEvent('kiiantu', 'CycleExecuted', log, stringValue(args, 'cycleId'), {
+  'kiiantu:CycleRun': (args, log) =>
+    buildEvent('kiiantu', 'CycleRun', log, stringValue(args, 'cycleId'), {
       cycleId: stringValue(args, 'cycleId'),
       noteId: numericString(args, 'noteId'),
-      tenorDays: numericString(args, 'tenorDays'),
-      rateBps: numericString(args, 'rateBps'),
-      timestamp: numericString(args, 'timestamp'),
-      operator: stringValue(args, 'operator'),
     }),
 
   'hrvst:MintByNAV': (args, log) =>
