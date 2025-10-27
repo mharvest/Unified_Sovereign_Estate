@@ -123,6 +123,10 @@ pm2 save
 
 Use `pm2 status cycle-watcher` to confirm it is running and `pm2 logs cycle-watcher` for output.
 
+Health probes:
+- `scripts/check_cycle_watcher_logs.sh 3600` alerts if the cron log has been idle for more than an hour.
+- `scripts/check_cycle_watcher_pm2.sh` exits non-zero when the PM2 process is missing or not `online`.
+
 ### Demo Seed Flow
 
 Deploy lightweight demo contracts to Anvil and refresh `.env.demo` with their addresses:

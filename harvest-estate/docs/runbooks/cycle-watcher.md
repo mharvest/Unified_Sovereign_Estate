@@ -14,6 +14,7 @@
    ```
 5. Check the output table for `cycles_updated`, cursor advance, gas metrics, and attestation counts.
 6. Inspect the latest attestation payload printed to confirm note metadata and block/gas data.
+7. Optional health check: `scripts/check_cycle_watcher_logs.sh 3600` exits non-zero if no tick has been recorded in the last hour.
 
 ## Cron Setup
 1. Make the cron helper executable:
@@ -24,7 +25,7 @@
    ```bash
    * * * * * /path/to/repo/scripts/run_cycle_watcher_cron.sh
    ```
-3. Logs are appended to `var/logs/cycle_watcher.log`.
+3. Logs are appended to `var/logs/cycle_watcher.log`. Pair with `scripts/check_cycle_watcher_logs.sh` for a quick heartbeat alert.
 
 ## Useful Queries
 - `SELECT "status", "cycleId", "executedAt" FROM "Cycle" WHERE "id" = 'cmh9d9mkl00007ut7y8zzgjhg';`
