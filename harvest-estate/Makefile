@@ -44,7 +44,7 @@ ledger-export:
 	curl -o ledger.csv http://localhost:4000/api/ledger/export
 
 attest-json:
-	cd se7en-backend && npm run attest:json -- $(FILES)
+	cd se7en-backend && npm run attest:json -- $(if $(OUTPUT),--output $(OUTPUT),) $(FILES)
 
 redeem-demo:
 	curl -X POST http://localhost:4000/treasury/redeem \

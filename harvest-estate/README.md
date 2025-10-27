@@ -127,6 +127,12 @@ Health probes:
 - `scripts/monitor_cycle_watcher.sh 3600` runs both the log heartbeat and PM2 status checks (default tolerance 1 hour).
 - `scripts/check_cycle_watcher_logs.sh` and `scripts/check_cycle_watcher_pm2.sh` remain available for targeted checks.
 
+### Reporting
+
+- `make ledger-export` writes the latest ledger to `ledger.csv` via `GET /api/ledger/export`.
+- `make attest-json OUTPUT=reports/attest.json FILES="docs/needed-evidence.md"` emits the attestation JSON report (wraps `npm run attest:json`).
+- You can also call `npm run attest:json -- --output out.json --files docs/a.md,docs/b.pdf` directly.
+
 ### Demo Seed Flow
 
 Deploy lightweight demo contracts to Anvil and refresh `.env.demo` with their addresses:
