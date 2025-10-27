@@ -71,6 +71,27 @@ const CycleArmSchema = z.object({
   rateBps: z.coerce.number().int().nonnegative(),
 });
 
+const CycleStatusSchema = z.object({
+  status: z.enum(['EXECUTED', 'FAILED']),
+  cycleId: z
+    .string()
+    .regex(/^0x[a-fA-F0-9]{64}$/, 'cycleId must be a 32-byte hex string')
+    .optional(),
+  txHash: z
+    .string()
+    .regex(/^0x[a-fA-F0-9]{64}$/, 'txHash must be a 32-byte hex string')
+    .optional(),
+  operator: z
+    .string()
+    .regex(/^0x[a-fA-F0-9]{40}$/, 'operator must be an EVM address')
+    .optional(),
+  noteId: z
+    .string()
+    .regex(/^\d+$/, 'Note ID must be a base-10 integer string')
+    .optional(),
+  error: z.string().optional(),
+});
+
 export default async function operationsRoutes(app: FastifyInstance) {
   app.post('/intake', async (request, reply) => {
     try {
@@ -520,6 +541,91 @@ export default async function operationsRoutes(app: FastifyInstance) {
       tenorDays: input.tenorDays,
       rateBps: input.rateBps,
       cycleRecordId,
+    });
+  });
+
+  app.patch('/cycle/:id/status', async (request, reply) => {
+    try {
+      await app.ensurePreconditions();
+    } catch (error) {
+      const response = buildTodoResponse(app, 'Cycle status updates require prerequisite evidence.');
+      return reply.status(428).send(response);
+    }
+
+    const role = request.user?.role ?? request.headers['x-test-role'];
+    if (!role || !['TREASURY', 'OPS'].includes(String(role))) {
+      return reply.status(403).send({ ok: false, error: 'forbidden' });
+    }
+
+    const cycleIdParam = request.params?.id;
+    if (!cycleIdParam || typeof cycleIdParam !== 'string') {
+      return reply.status(400).send({ ok: false, error: 'invalid_cycle_id' });
+    }
+
+    const cycle = await prisma.cycle.findUnique({ where: { id: cycleIdParam } });
+    if (!cycle) {
+      return reply.status(404).send({ ok: false, error: 'cycle_not_found' });
+    }
+
+    const input = CycleStatusSchema.parse(request.body ?? {});
+    const now = new Date();
+
+    const updated = await prisma.cycle.update({
+      where: { id: cycleIdParam },
+      data: {
+        status: input.status,
+        executedAt: input.status === 'EXECUTED' ? now : cycle.executedAt,
+        failedAt: input.status === 'FAILED' ? now : null,
+        cycleId: input.cycleId ?? cycle.cycleId,
+        txHash: input.txHash ?? cycle.txHash,
+        operator: input.operator ?? cycle.operator,
+        noteId: input.noteId ? BigInt(input.noteId) : cycle.noteId,
+        metadata: {
+          ...(cycle.metadata ?? {}),
+          manualUpdate: {
+            actor: String(role),
+            at: now.toISOString(),
+            error: input.error ?? null,
+          },
+        },
+      },
+    });
+
+    try {
+      await prisma.auditLog.create({
+        data: {
+          action: input.status === 'EXECUTED' ? 'CYCLE_EXECUTE_MANUAL' : 'CYCLE_FAIL_MANUAL',
+          assetId: 'manual-cycle-update',
+          attestationId: null,
+          txHash: updated.txHash,
+          payload: {
+            route: 'PATCH /cycle/:id/status',
+            actor: String(role),
+            cycleId: updated.id,
+            status: updated.status,
+            txHash: updated.txHash,
+            noteId: updated.noteId.toString(),
+            operator: updated.operator,
+            error: input.error ?? null,
+          },
+        },
+      });
+    } catch (error) {
+      request.log.warn({ err: error }, 'Failed to persist cycle status audit log');
+    }
+
+    return reply.status(200).send({
+      ok: true,
+      cycle: {
+        id: updated.id,
+        status: updated.status,
+        cycleId: updated.cycleId,
+        txHash: updated.txHash,
+        operator: updated.operator,
+        noteId: updated.noteId.toString(),
+        executedAt: updated.executedAt?.toISOString() ?? null,
+        failedAt: updated.failedAt?.toISOString() ?? null,
+      },
     });
   });
 
