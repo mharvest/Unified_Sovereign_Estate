@@ -124,8 +124,8 @@ pm2 save
 Use `pm2 status cycle-watcher` to confirm it is running and `pm2 logs cycle-watcher` for output.
 
 Health probes:
-- `scripts/check_cycle_watcher_logs.sh 3600` alerts if the cron log has been idle for more than an hour.
-- `scripts/check_cycle_watcher_pm2.sh` exits non-zero when the PM2 process is missing or not `online`.
+- `scripts/monitor_cycle_watcher.sh 3600` runs both the log heartbeat and PM2 status checks (default tolerance 1 hour).
+- `scripts/check_cycle_watcher_logs.sh` and `scripts/check_cycle_watcher_pm2.sh` remain available for targeted checks.
 
 ### Demo Seed Flow
 
