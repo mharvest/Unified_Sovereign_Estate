@@ -453,20 +453,24 @@ export default async function operationsRoutes(app: FastifyInstance) {
 
     let cycleRecordId: string | null = null;
     try {
+      const now = new Date();
       const cycleRecord = await prisma.cycle.create({
         data: {
-          kind: 'kiiantu',
-          state: cycleError ? 'failed' : 'armed',
-          params: {
-            noteId: input.noteId,
-            tenorDays: input.tenorDays,
-            rateBps: input.rateBps,
-            cycleId,
-            txHash,
-            error: cycleError,
+          program: 'kiiantu',
+          status: cycleError ? 'FAILED' : 'ARMED',
+          noteId: noteIdBigInt,
+          cycleId,
+          tenorDays: input.tenorDays,
+          rateBps: input.rateBps,
+          operator: app.contracts.operatorAddress,
+          txHash,
+          armedAt: now,
+          executedAt: null,
+          failedAt: cycleError ? now : null,
+          metadata: {
+            actor: request.user?.role ?? null,
+            cycleError,
           },
-          startedAt: new Date(),
-          completedAt: cycleError ? null : new Date(),
         },
       });
       cycleRecordId = cycleRecord.id;
@@ -492,6 +496,8 @@ export default async function operationsRoutes(app: FastifyInstance) {
             txHash,
             cycleRecordId,
             cycleError,
+            status: cycleError ? 'FAILED' : 'ARMED',
+            operator: app.contracts.operatorAddress,
           },
         },
       });

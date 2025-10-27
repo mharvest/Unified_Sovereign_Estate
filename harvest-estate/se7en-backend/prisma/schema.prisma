@@ -82,13 +82,21 @@ model PegMint {
 }
 
 model Cycle {
-  id          String   @id @default(cuid())
-  kind        String
-  state       String
-  params      Json
-  startedAt   DateTime?
-  completedAt DateTime?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  program    String   @default("kiiantu")
+  status     String   @default("ARMED")
+  noteId     BigInt
+  cycleId    String?  @unique
+  tenorDays  Int
+  rateBps    Int
+  operator   String?
+  txHash     String?
+  armedAt    DateTime @default(now())
+  executedAt DateTime?
+  failedAt   DateTime?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model Override {

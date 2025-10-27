@@ -45,7 +45,7 @@ describe('POST /cycle/arm', () => {
         expect(rateBps).toBe(250);
         return { cycleId: CYCLE_ID, txHash: TX_HASH };
       },
-    });
+    } as any);
 
     const token = createJwt('TREASURY');
     const app = buildApp({ contracts });
@@ -53,13 +53,7 @@ describe('POST /cycle/arm', () => {
     const cycleCreateMock = prisma.cycle.create as unknown as Mock;
     cycleCreateMock.mockResolvedValue({
       id: 'cycle-record-id',
-      kind: 'kiiantu',
-      state: 'armed',
-      params: {},
-      startedAt: new Date(),
-      completedAt: new Date(),
-      createdAt: new Date(),
-    });
+    } as any);
 
     const auditCreateMock = prisma.auditLog.create as unknown as Mock;
     auditCreateMock.mockResolvedValue({
@@ -91,19 +85,27 @@ describe('POST /cycle/arm', () => {
 
     expect(cycleCreateMock).toHaveBeenCalledTimes(1);
     const cyclePayload = cycleCreateMock.mock.calls[0][0];
-    expect(cyclePayload.data.kind).toBe('kiiantu');
-    expect(cyclePayload.data.state).toBe('armed');
-    expect(cyclePayload.data.params).toMatchObject({
-      cycleId: CYCLE_ID,
-      noteId: '1',
-      tenorDays: 30,
-      rateBps: 250,
+    expect(cyclePayload.data.program).toBe('kiiantu');
+    expect(cyclePayload.data.status).toBe('ARMED');
+    expect(cyclePayload.data.noteId).toBe(1n);
+    expect(cyclePayload.data.cycleId).toBe(CYCLE_ID);
+    expect(cyclePayload.data.tenorDays).toBe(30);
+    expect(cyclePayload.data.rateBps).toBe(250);
+    expect(cyclePayload.data.operator).toBeDefined();
+    expect(cyclePayload.data.txHash).toBe(TX_HASH);
+    expect(cyclePayload.data.armedAt).toBeInstanceOf(Date);
+    expect(cyclePayload.data.executedAt).toBeNull();
+    expect(cyclePayload.data.failedAt).toBeNull();
+    expect(cyclePayload.data.metadata).toMatchObject({
+      cycleError: null,
     });
 
     expect(auditCreateMock).toHaveBeenCalledTimes(1);
     const auditPayload = auditCreateMock.mock.calls[0][0];
     expect(auditPayload.data.action).toBe('CYCLE_ARM');
     expect(auditPayload.data.payload.cycleId).toBe(CYCLE_ID);
+    expect(auditPayload.data.payload.status).toBe('ARMED');
+    expect(auditPayload.data.payload.operator).toBeDefined();
 
     await app.close();
   });

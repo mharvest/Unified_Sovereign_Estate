@@ -93,15 +93,25 @@ CREATE TABLE "PegMint" (
 -- CreateTable
 CREATE TABLE "Cycle" (
     "id" TEXT NOT NULL,
-    "kind" TEXT NOT NULL,
-    "state" TEXT NOT NULL,
-    "params" JSONB NOT NULL,
-    "startedAt" TIMESTAMP(3),
-    "completedAt" TIMESTAMP(3),
+    "program" TEXT NOT NULL DEFAULT 'kiiantu',
+    "status" TEXT NOT NULL DEFAULT 'ARMED',
+    "noteId" BIGINT NOT NULL,
+    "cycleId" TEXT,
+    "tenorDays" INTEGER NOT NULL,
+    "rateBps" INTEGER NOT NULL,
+    "operator" TEXT,
+    "txHash" TEXT,
+    "armedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "executedAt" TIMESTAMP(3),
+    "failedAt" TIMESTAMP(3),
+    "metadata" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Cycle_pkey" PRIMARY KEY ("id")
 );
+
+CREATE UNIQUE INDEX "Cycle_cycleId_key" ON "Cycle"("cycleId");
 
 -- CreateTable
 CREATE TABLE "Override" (
