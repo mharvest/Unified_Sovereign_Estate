@@ -41,8 +41,14 @@ On success the service:
 ## Demo
 
 ```bash
-make sign-demo             # Builds stack, runs upload + signing demo, exports reports
-# Visit http://localhost:8025 to verify the email landed in MailHog
+make safevault-demo        # Uploads a demo document and triggers MailHog notification
+```
+
+This target expects:
+- `SAFEVAULT_UPLOADS_ENABLED=true` inside the `se7en` container.
+- `SE7EN_DEMO_JWT` populated with a LAW or OPS token (see the signing docs for instructions).
+
+After running the command, open [http://localhost:8025](http://localhost:8025) to view the captured email in MailHog.
 ```
 
 JWT requirements mirror the other fiduciary routes (LAW/OPS token needed for upload).
