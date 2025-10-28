@@ -19,6 +19,7 @@ export interface AuditEntry {
 export interface AuditLogger {
   log(entry: AuditEntry): Promise<void>;
   history(limit?: number): Promise<AuditLogRecord[]>;
+  findByAttestation(attestationId: string): Promise<AuditLogRecord | null>;
 }
 
 export interface AuditLogRecord {
@@ -61,6 +62,23 @@ export default fp(async (app: FastifyInstance) => {
           payload: record.payload,
           createdAt: record.createdAt,
         }));
+      },
+      async findByAttestation(attestationId) {
+        const record = await prisma.auditLog.findFirst({
+          where: { attestationId },
+          orderBy: { createdAt: 'desc' },
+        });
+        return record
+          ? {
+              id: record.id,
+              action: record.action,
+              assetId: record.assetId,
+              attestationId: record.attestationId,
+              txHash: record.txHash,
+              payload: record.payload,
+              createdAt: record.createdAt,
+            }
+          : null;
       },
     };
 

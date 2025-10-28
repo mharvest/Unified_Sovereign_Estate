@@ -119,8 +119,9 @@ export class MemoryAuditLogger implements AuditLogger {
   }
 
   async history(limit = 50): Promise<AuditLogRecord[]> {
-    return this.records.slice(-limit).map((record, index) => ({
-      id: `mem-${index}`,
+    const startIndex = Math.max(this.records.length - limit, 0);
+    return this.records.slice(startIndex).map((record, offset) => ({
+      id: startIndex + offset + 1,
       action: record.action,
       assetId: record.assetId ?? 'system',
       attestationId: record.attestationId ?? null,
@@ -128,6 +129,24 @@ export class MemoryAuditLogger implements AuditLogger {
       payload: record.payload ?? {},
       createdAt: new Date(),
     }));
+  }
+
+  async findByAttestation(attestationId: string): Promise<AuditLogRecord | null> {
+    for (let idx = this.records.length - 1; idx >= 0; idx -= 1) {
+      const record = this.records[idx];
+      if (record.attestationId === attestationId) {
+        return {
+          id: idx + 1,
+          action: record.action,
+          assetId: record.assetId ?? 'system',
+          attestationId: record.attestationId ?? null,
+          txHash: record.txHash ?? null,
+          payload: record.payload ?? {},
+          createdAt: new Date(),
+        };
+      }
+    }
+    return null;
   }
 }
 

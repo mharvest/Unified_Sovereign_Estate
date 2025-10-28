@@ -669,22 +669,6 @@ export default async function operationsRoutes(app: FastifyInstance) {
     return reply.status(428).send(buildTodoResponse(app, 'VaultQuant redemption path pending Nav + affidavit enforcement.'));
   });
 
-  app.get(
-    '/verify/:id',
-    { preHandler: app.authorize(['AUDITOR', 'GOVERNANCE', 'LAW']) },
-    async (_request, reply) => {
-      try {
-        await app.ensurePreconditions();
-      } catch (error) {
-        const response = buildTodoResponse(app, 'Verification requires custody and affidavit inputs.');
-        return reply.status(428).send(response);
-      }
-      return reply.status(428).send(
-        buildTodoResponse(app, 'Verification bundle generation not yet implemented.'),
-      );
-    },
-  );
-
   app.post(
     '/vault/upload',
     { preHandler: app.authorize(['LAW', 'OPS']) },
