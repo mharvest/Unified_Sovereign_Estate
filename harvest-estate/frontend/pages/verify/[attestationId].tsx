@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import { fetchVerification, type VerifyResponse } from '../../lib/api';
+import { fetchVerification, downloadVerificationPdf, type VerifyResponse } from '../../lib/api';
 
 export default function VerifyPage() {
   const router = useRouter();
@@ -28,71 +27,44 @@ export default function VerifyPage() {
 
   const dossier = useMemo(() => {
     if (!data) return null;
+    const affidavit = data.affidavit && typeof data.affidavit === 'object' ? (data.affidavit as Record<string, unknown>) : null;
+    const audit = data.audit && typeof data.audit === 'object' ? (data.audit as Record<string, unknown>) : null;
     return {
       attestation: data.attestation,
-      affidavit: data.affidavit as Record<string, unknown> | null,
+      affidavit,
+      audit,
       docs: data.safeVault.docHashes ?? [],
     };
   }, [data]);
 
+  const affidavitEntries = useMemo(() => {
+    if (!dossier?.affidavit) return [];
+    return Object.entries(dossier.affidavit);
+  }, [dossier]);
+
+  const auditEntries = useMemo(() => {
+    if (!dossier?.audit) return [];
+    return Object.entries(dossier.audit);
+  }, [dossier]);
+
   const handleDownloadPdf = async () => {
     if (!dossier || typeof attestationId !== 'string') return;
-    const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage([612, 792]);
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const draw = (text: string, x: number, y: number, size = 12) => {
-      page.drawText(text, { x, y, size, font, color: rgb(1, 1, 1) });
-    };
+    try {
+      const blob = await downloadVerificationPdf(attestationId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `dossier-${attestationId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
 
-    let cursor = 752;
-    draw('Harvest Estate — Sovereign Dossier', 40, cursor, 18);
-    cursor -= 30;
-    draw(`Attestation: ${dossier.attestation.id}`, 40, cursor);
-    cursor -= 18;
-    draw(`Clause: ${dossier.attestation.clause}`, 40, cursor);
-    cursor -= 18;
-    draw(`Jurisdiction: ${dossier.attestation.jurisdiction}`, 40, cursor);
-    cursor -= 18;
-    draw(`Timestamp: ${new Date(Number(dossier.attestation.timestamp) * 1000).toISOString()}`, 40, cursor);
-    cursor -= 24;
-    draw('SafeVault Documents:', 40, cursor, 14);
-    cursor -= 18;
-    if (dossier.docs.length === 0) {
-      draw('No documents recorded.', 60, cursor);
-      cursor -= 18;
-    } else {
-      dossier.docs.forEach((hash) => {
-        draw(`• ${hash}`, 60, cursor, 10);
-        cursor -= 14;
-      });
-    }
-
-    cursor -= 12;
-    draw('Affidavit Snapshot:', 40, cursor, 14);
-    cursor -= 18;
-    if (dossier.affidavit) {
-      Object.entries(dossier.affidavit).forEach(([key, value]) => {
-        draw(`${key}: ${String(value)}`, 60, cursor, 10);
-        cursor -= 14;
-      });
-    } else {
-      draw('No affidavit payload returned.', 60, cursor);
-      cursor -= 18;
-    }
-
-    const pdfBytes = await pdfDoc.save();
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `dossier-${attestationId}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-
-    if (autoArchive) {
-      alert('SafeVault archive toggle is enabled — archive request queued (demo stub).');
+      if (autoArchive) {
+        alert('SafeVault archive toggle is enabled — archive request queued (demo stub).');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to download dossier PDF');
     }
   };
 
@@ -129,7 +101,7 @@ export default function VerifyPage() {
                   <InfoBlock label="Attestor" value={dossier.attestation.attestor} />
                   <InfoBlock
                     label="Timestamp"
-                    value={new Date(Number(dossier.attestation.timestamp) * 1000).toLocaleString()}
+                    value={formatTimestamp(dossier.attestation.timestamp)}
                   />
                 </div>
               </section>
@@ -147,6 +119,20 @@ export default function VerifyPage() {
                     </li>
                   ))}
                 </ul>
+              </section>
+
+              <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg">
+                <h2 className="text-xl font-semibold text-white">Affidavit Snapshot</h2>
+                <div className="mt-4">
+                  <KeyValueList entries={affidavitEntries} emptyMessage="No affidavit payload returned." />
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg">
+                <h2 className="text-xl font-semibold text-white">Audit Trail (Most Recent)</h2>
+                <div className="mt-4">
+                  <KeyValueList entries={auditEntries} emptyMessage="No audit record found for this attestation." />
+                </div>
               </section>
 
               <section className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-lg">
@@ -197,6 +183,59 @@ function InfoBlock({ label, value }: InfoBlockProps) {
       <p className="mt-2 break-all text-white">{value}</p>
     </div>
   );
+}
+
+interface KeyValueListProps {
+  entries: Array<[string, unknown]>;
+  emptyMessage: string;
+}
+
+function KeyValueList({ entries, emptyMessage }: KeyValueListProps) {
+  if (!entries || entries.length === 0) {
+    return <p className="text-sm text-gray-400">{emptyMessage}</p>;
+  }
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      {entries.map(([key, value]) => {
+        const formatted = formatValue(value);
+        const isMultiline = formatted.includes('\n');
+        return (
+          <div key={key} className="space-y-1">
+            <p className="text-xs uppercase tracking-wide text-gray-400">{key}</p>
+            {isMultiline ? (
+              <pre className="whitespace-pre-wrap break-words rounded-lg border border-white/10 bg-white/10 p-3 text-sm text-white/90">
+                {formatted}
+              </pre>
+            ) : (
+              <p className="rounded-lg border border-white/10 bg-white/10 p-3 text-sm text-white/90">{formatted}</p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function formatValue(value: unknown): string {
+  if (value == null) return '';
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch (error) {
+      return String(value);
+    }
+  }
+  return String(value);
+}
+
+function formatTimestamp(raw: string): string {
+  const numericSeconds = Number(raw);
+  if (Number.isFinite(numericSeconds)) {
+    return new Date(numericSeconds * 1000).toLocaleString();
+  }
+  return raw;
 }
 
 export async function getServerSideProps() {

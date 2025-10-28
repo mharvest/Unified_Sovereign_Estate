@@ -12,6 +12,7 @@ import operationsRoutes from './routes/operations.js';
 import systemRoutes from './routes/system.js';
 import signRoutes from './routes/sign.js';
 import ledgerRoutes from './routes/ledger.js';
+import verifyRoutes from './routes/verify.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -76,6 +77,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   app.register(operationsRoutes);
   app.register(signRoutes);
   app.register(ledgerRoutes);
+  app.register(verifyRoutes);
 
   return app;
 }

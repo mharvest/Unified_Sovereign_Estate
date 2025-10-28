@@ -127,7 +127,7 @@ export interface VerifyResponse {
     subjectId: string;
     payloadHash: string;
     clause: string;
-    timestamp: number;
+    timestamp: string;
     attestor: string;
     jurisdiction: string;
   };
@@ -140,6 +140,19 @@ export interface VerifyResponse {
 
 export async function fetchVerification(attestationId: string): Promise<VerifyResponse> {
   return request<VerifyResponse>(`/verify/${attestationId}`);
+}
+
+export async function downloadVerificationPdf(attestationId: string): Promise<Blob> {
+  const headers: Record<string, string> = {};
+  if (AUTH_TOKEN) {
+    headers.Authorization = `Bearer ${AUTH_TOKEN}`;
+  }
+  const response = await fetch(`${BASE_URL}/verify/${attestationId}/pdf`, { headers });
+  if (!response.ok) {
+    const message = await response.text().catch(() => response.statusText);
+    throw new Error(message || 'failed_to_download_pdf');
+  }
+  return await response.blob();
 }
 
 export interface NavSnapshot {
