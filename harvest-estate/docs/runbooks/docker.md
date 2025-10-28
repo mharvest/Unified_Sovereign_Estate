@@ -43,8 +43,8 @@ make attest-json
 # Run the demo automation loop
 make demo-alpha
 
-# Run the signing + upload demo loop (MailHog + SafeVault)
-make sign-demo
+# Exercise the SafeVault upload flow (emits email via MailHog)
+make safevault-demo
 ```
 
 ## Subscriber Poller
@@ -63,12 +63,8 @@ npm run demo-seed
 The script reports attestation IDs per stage and flags missing evidence (e.g. contract addresses, Compton #24 hashes).
 
 ### Demo Automation Notes
-- `make demo-alpha` accepts toggles, for example:
-  ```bash
-  SIGN_ENABLED=true UPLOADS_ENABLED=true make demo-alpha
-  ```
-- `make sign-demo` is a shortcut that sets `SIGN_ENABLED=true` and executes the automation loop.
-  These variables pass through to `docker compose` so you can exercise optional signing or upload flows during the run.
+- Set `SAFEVAULT_UPLOADS_ENABLED=true` and ensure `SE7EN_DEMO_JWT` is populated in `.env` before running `make safevault-demo`.
+- After the command completes, open [http://localhost:8025](http://localhost:8025) to confirm that MailHog captured the notification email.
 
 ## Troubleshooting
 - **Health check flapping**: ensure ports 3000/4000/5050/8545 are not already in use.

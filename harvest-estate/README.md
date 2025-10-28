@@ -247,6 +247,7 @@ Expected response:
 - Toggle with `SAFEVAULT_UPLOADS_ENABLED=true` (enabled automatically during `make sign-demo`).
 - Upload custody files via `POST /vault/upload` (LAW/OPS roles) using base64-encoded payloads; records land in `CustodyDoc` with the computed SHA-256.
 - Notifications are delivered over SMTP (MailHog by default at `http://localhost:8025`). Configure recipients with `SAFEVAULT_NOTIFICATION_TO`.
+- Run `make safevault-demo` to post a demo document and confirm MailHog notifications end-to-end.
 - See `docs/vault.md` for the full runbook.
 
 ---

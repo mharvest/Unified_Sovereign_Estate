@@ -51,5 +51,21 @@ redeem-demo:
 		-H "Content-Type: application/json" \
 		-d '{"holderId":"RUDY-CELAYA-001","tokens":1500}'
 
+safevault-demo:
+	@if ! docker compose ps --services --filter "status=running" | grep -q '^se7en$$'; then \
+		echo "Se7en container is not running. Launch the stack with 'make demo' first."; \
+		exit 1; \
+	fi
+	@if [ "$$(docker compose exec se7en printenv SAFEVAULT_UPLOADS_ENABLED | tr -d '\r' | tr '[:upper:]' '[:lower:]')" != "true" ]; then \
+		echo "SAFEVAULT_UPLOADS_ENABLED must be set to true (e.g. in .env) before running this demo."; \
+		exit 1; \
+	fi
+	@if [ -z "$$(docker compose exec se7en printenv SE7EN_DEMO_JWT | tr -d '\r')" ]; then \
+		echo "SE7EN_DEMO_JWT is not set inside the se7en container. Generate a LAW/OPS JWT and update your .env before running this demo."; \
+		exit 1; \
+	fi
+	docker compose exec se7en npx tsx scripts/safevault_demo.ts
+	@echo "Open http://localhost:8025 to view the captured email in MailHog."
+
 clean:
 	docker system prune -a -f
