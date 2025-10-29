@@ -8,7 +8,7 @@ export function FiduciaryConsolePanel() {
 
   return (
     <div className="rounded-2xl border border-violet-700/40 bg-indigo-950/60 p-6 shadow-lg">
-      <h2 className="text-lg font-semibold text-violet-200">Fiduciary Signatures</h2>
+      <h2 className="text-lg font-semibold text-violet-200">Fiduciary Command Console</h2>
       <p className="mb-4 text-xs text-gray-400">
         Clearance-based approvals routed through Se7en multi-witness protocol.
       </p>

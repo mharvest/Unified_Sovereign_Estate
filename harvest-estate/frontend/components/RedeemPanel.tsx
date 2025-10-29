@@ -47,7 +47,7 @@ export function RedeemPanel({ currentMode, onModeChange }: RedeemPanelProps) {
 
   return (
     <div className="rounded-2xl border border-white/10 bg-black/50 p-6 shadow-lg">
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-xs uppercase tracking-wide text-gray-400">
+      <div className="mb-4 flex flex-col gap-3 text-xs uppercase tracking-wide text-gray-400 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-violet-200">Redeem HRVST Tokens</h2>
           <p className="text-xs text-gray-400">

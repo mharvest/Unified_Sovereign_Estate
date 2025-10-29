@@ -318,15 +318,39 @@ export default function Dashboard() {
     return <p className={`text-xs ${palette[state]}`}>{copy[state]}</p>;
   };
 
-  const formatCurrency = (value: number | undefined) => {
-    if (value === undefined) return '—';
+  const formatCurrency = (value: number | null | undefined) => {
+    if (value === undefined || value === null || Number.isNaN(value)) return '—';
     return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  const formatNumber = (value: number | undefined) => {
-    if (value === undefined) return '—';
-    return value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const formatNumber = (value: number | null | undefined, options?: Intl.NumberFormatOptions) => {
+    if (value === undefined || value === null || Number.isNaN(value)) return '—';
+    return value.toLocaleString(undefined, options ?? { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   };
+
+  const formatFixed = (value: number | null | undefined, digits = 4) => {
+    if (value === undefined || value === null || Number.isNaN(value)) return '—';
+    return value.toFixed(digits);
+  };
+
+  const formatPrice = (value: number | null | undefined, digits = 4) => {
+    const fixed = formatFixed(value, digits);
+    return fixed === '—' ? '—' : `$${fixed}`;
+  };
+
+  const formatNavPerToken = (value: number | null | undefined) => formatPrice(value, 4);
+
+  const formatPolicyFloor = (value: number | null | undefined) => formatPrice(value, 4);
+
+  const formatReferencePrice = (value: number | null | undefined) => formatPrice(value, 4);
+
+  const formatSupply = (value: number | null | undefined) => formatNumber(value, { maximumFractionDigits: 0 });
+
+  const safeNavTotal = navMetrics?.navTotal ?? null;
+  const safeSupply = navMetrics?.supply ?? null;
+  const safeNavPerToken = navMetrics?.navPerToken ?? null;
+  const safePolicyFloor = navMetrics?.policyFloor ?? null;
+  const safeReferencePrice = navMetrics?.price ?? null;
 
   return (
     <>
@@ -682,29 +706,23 @@ export default function Dashboard() {
                 <dl className="mt-4 space-y-3 text-sm text-gray-200">
                   <div className="flex items-center justify-between">
                     <dt className="text-xs uppercase tracking-wide text-gray-400">NAV / Token</dt>
-                    <dd className="font-mono text-base text-white">
-                      {navMetrics ? `$${navMetrics.navPerToken.toFixed(4)}` : '—'}
-                    </dd>
+                    <dd className="font-mono text-base text-white">{formatNavPerToken(safeNavPerToken)}</dd>
                   </div>
                   <div className="flex items-center justify-between">
                     <dt className="text-xs uppercase tracking-wide text-gray-400">Policy Floor</dt>
-                    <dd className="font-mono text-base text-white">
-                      {navMetrics ? `$${navMetrics.policyFloor.toFixed(4)}` : '—'}
-                    </dd>
+                    <dd className="font-mono text-base text-white">{formatPolicyFloor(safePolicyFloor)}</dd>
                   </div>
                   <div className="flex items-center justify-between">
                     <dt className="text-xs uppercase tracking-wide text-gray-400">Coverage NAV</dt>
-                    <dd className="font-mono text-base text-white">{formatCurrency(navMetrics?.navTotal)}</dd>
+                    <dd className="font-mono text-base text-white">{formatCurrency(safeNavTotal)}</dd>
                   </div>
                   <div className="flex items-center justify-between">
                     <dt className="text-xs uppercase tracking-wide text-gray-400">Outstanding Supply</dt>
-                    <dd className="font-mono text-base text-white">{formatNumber(navMetrics?.supply)}</dd>
+                    <dd className="font-mono text-base text-white">{formatSupply(safeSupply)}</dd>
                   </div>
                   <div className="flex items-center justify-between">
                     <dt className="text-xs uppercase tracking-wide text-gray-400">Reference Price</dt>
-                    <dd className="font-mono text-base text-white">
-                      {navMetrics ? `$${navMetrics.price.toFixed(4)}` : '—'}
-                    </dd>
+                    <dd className="font-mono text-base text-white">{formatReferencePrice(safeReferencePrice)}</dd>
                   </div>
                 </dl>
               </div>
