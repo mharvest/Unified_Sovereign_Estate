@@ -2,6 +2,16 @@ import type { FastifyInstance } from 'fastify';
 import { collectMissingInputs, missingToTodoList } from '../lib/requiredInputs.js';
 
 export default async function systemRoutes(app: FastifyInstance) {
+  app.get('/health', async () => ({
+    ok: true,
+    module: 'se7en-orchestrator',
+    mode: (process.env.ESTATE_MODE || 'demo').toLowerCase(),
+  }));
+
+  app.head('/health', async (_request, reply) => {
+    reply.status(200).send();
+  });
+
   app.get('/health/system', async (request, reply) => {
     const snapshot = collectMissingInputs();
     const todos = missingToTodoList([...snapshot.base, ...snapshot.live]);

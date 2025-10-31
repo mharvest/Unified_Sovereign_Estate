@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 
-export interface ActuarialClass {
+export interface CoverageClass {
   code: string;
   description: string;
   multiplier: number;
@@ -11,88 +13,86 @@ export interface ActuarialClass {
 interface ActuarialTables {
   version: string;
   source: string;
-  classes: ActuarialClass[];
-  disclosure: {
-    jurisdiction: string;
-    actuary: string;
-    effectiveDate: string;
-  };
+  classes: CoverageClass[];
+  disclosure: Record<string, unknown>;
 }
 
-const TABLES_JSON = `{
-  "version": "2025-10-25",
-  "source": "Matriarch Insurance Underwriting Desk",
-  "classes": [
-    {
-      "code": "CSDN-A",
-      "description": "Prime collateralized sovereign debt note",
-      "multiplier": 3.5,
-      "floorBps": 8500,
-      "classCode": 1
-    },
-    {
-      "code": "CSDN-B",
-      "description": "Seasoned sovereign debt note",
-      "multiplier": 2.8,
-      "floorBps": 8000,
-      "classCode": 2
-    },
-    {
-      "code": "SDN-A",
-      "description": "Secured digital note backed by insured real property",
-      "multiplier": 2.1,
-      "floorBps": 7200,
-      "classCode": 3
-    },
-    {
-      "code": "SDN-B",
-      "description": "Stabilized digital note with partial collateral",
-      "multiplier": 1.6,
-      "floorBps": 6700,
-      "classCode": 4
-    }
-  ],
-  "disclosure": {
-    "jurisdiction": "UHMI 508(c)(1)(a)",
-    "actuary": "Matriarch Risk Collective",
-    "effectiveDate": "2025-10-01"
+interface LoadedTables {
+  tables: ActuarialTables;
+  hash: string;
+  sourcePath: string;
+}
+
+let cachedTables: LoadedTables | null = null;
+
+const DEFAULT_RELATIVE_PATHS = [
+  ['docs', 'actuarial', 'matriarch_tables.json'],
+  ['..', 'docs', 'actuarial', 'matriarch_tables.json'],
+  ['..', '..', 'docs', 'actuarial', 'matriarch_tables.json'],
+];
+
+function normalizeHash(value: string): string {
+  return value.trim().toLowerCase().replace(/^0x/, '');
+}
+
+async function loadActuarialTables(): Promise<LoadedTables> {
+  if (cachedTables) {
+    return cachedTables;
   }
-}`;
 
-const TABLES: ActuarialTables = JSON.parse(TABLES_JSON) as ActuarialTables;
+  const overrides: string[] = [];
+  const searchPaths: string[] = [];
 
-let verified = false;
+  if (process.env.ACTUARIAL_TABLES_PATH && process.env.ACTUARIAL_TABLES_PATH.trim().length > 0) {
+    searchPaths.push(path.resolve(process.env.ACTUARIAL_TABLES_PATH.trim()));
+    overrides.push(searchPaths[0]);
+  }
 
-function computeEmbeddedHash(): string {
-  const hash = createHash('sha256');
-  hash.update(TABLES_JSON);
-  return hash.digest('hex');
+  for (const parts of DEFAULT_RELATIVE_PATHS) {
+    searchPaths.push(path.resolve(process.cwd(), ...parts));
+  }
+
+  const attempted: string[] = [];
+
+  for (const candidate of searchPaths) {
+    attempted.push(candidate);
+    try {
+      const raw = await readFile(candidate, 'utf8');
+      const parsed = JSON.parse(raw) as ActuarialTables;
+      const hash = `0x${createHash('sha256').update(raw, 'utf8').digest('hex')}`;
+      cachedTables = { tables: parsed, hash, sourcePath: candidate };
+      return cachedTables;
+    } catch (error) {
+      const err = error as NodeJS.ErrnoException;
+      if (err?.code === 'ENOENT') {
+        continue;
+      }
+      throw new Error(`Failed to load actuarial tables from ${candidate}: ${err?.message ?? err}`);
+    }
+  }
+
+  const overrideNotice = overrides.length > 0 ? ` (ACTUARIAL_TABLES_PATH=${overrides[0]})` : '';
+  throw new Error(`Unable to locate actuarial tables${overrideNotice}. Checked: ${attempted.join(', ')}`);
 }
 
 export async function verifyActuarialHash(): Promise<void> {
-  if (verified) {
-    return;
+  const expected = process.env.ACTUARIAL_TABLES_JSON_SHA256?.trim() ?? '';
+  if (expected.length === 0) {
+    throw new Error('ACTUARIAL_TABLES_JSON_SHA256 is not configured');
   }
-  const expected = process.env.ACTUARIAL_TABLES_JSON_SHA256;
-  if (!expected) {
-    throw new Error('ACTUARIAL_TABLES_JSON_SHA256 not configured');
+
+  const { hash, sourcePath } = await loadActuarialTables();
+  if (normalizeHash(expected) !== normalizeHash(hash)) {
+    throw new Error(`Actuarial tables hash mismatch for ${sourcePath}. Expected ${expected}, found ${hash}`);
   }
-  const normalizedExpected = expected.startsWith('0x') ? expected.slice(2) : expected;
-  const actual = computeEmbeddedHash();
-  if (normalizedExpected.toLowerCase() !== actual) {
-    throw new Error(`Actuarial tables hash mismatch (expected ${normalizedExpected}, found ${actual})`);
-  }
-  verified = true;
 }
 
-export async function resolveActuarialClass(classCode: number): Promise<ActuarialClass> {
-  const entry = TABLES.classes.find((item) => item.classCode === classCode);
-  if (!entry) {
-    throw new Error(`Unknown actuarial class code: ${classCode}`);
+export async function resolveActuarialClass(classCode: number): Promise<CoverageClass> {
+  const { tables } = await loadActuarialTables();
+  const coverageClass = tables.classes.find((item) => item.classCode === classCode);
+  if (!coverageClass) {
+    throw new Error(`Unknown Matriarch coverage class code: ${classCode}`);
   }
-  return { ...entry };
+  return coverageClass;
 }
 
-export function listActuarialClasses(): ActuarialClass[] {
-  return TABLES.classes.map((entry) => ({ ...entry }));
-}

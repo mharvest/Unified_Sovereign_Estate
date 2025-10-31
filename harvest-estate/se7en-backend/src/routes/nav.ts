@@ -82,6 +82,10 @@ export default async function navRoutes(app: FastifyInstance) {
     mode: (process.env.ESTATE_MODE || 'demo').toLowerCase(),
   }));
 
+  app.head('/health', async (_request, reply) => {
+    reply.status(200).send();
+  });
+
   app.get('/api/nav', async () => ({ ts: Date.now(), ...(await readSnapshot()) }));
 
   app.get('/api/nav/preview', async (req, reply) => {
