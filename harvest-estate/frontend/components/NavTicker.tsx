@@ -125,7 +125,7 @@ export function NavTicker() {
     <div className="relative w-full overflow-hidden rounded-xl border border-violet-500/40 bg-gradient-to-r from-violet-900/60 via-purple-900/40 to-indigo-950/60 pt-14 shadow-lg sm:pt-16">
       <div className="absolute -top-4 right-4 hidden translate-y-2 items-end gap-3 rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-xs uppercase tracking-[0.35em] text-violet-100 shadow-2xl backdrop-blur md:flex">
         <Image
-          src="/hrvst_trust_logo.png"
+          src="/HRVST_TRUST_LOGO.png"
           alt="HRVST Sovereign Trust"
           width={96}
           height={96}
